@@ -1,12 +1,16 @@
-import { Stack } from "expo-router";
-import "../global.css"; // Import global CSS if you created it
+import LoaderProvider from "@/context/LoaderContext";
+import "../global.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { Slot } from "expo-router";
 
-export default function RootLayout() {
+const RootLayout = () => {
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="signin" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-    </Stack>
+    <LoaderProvider>
+      <AuthProvider>
+        <Slot />
+      </AuthProvider>
+    </LoaderProvider>
   );
-}
+};
+
+export default RootLayout;
