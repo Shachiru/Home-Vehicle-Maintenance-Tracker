@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "homevehiclemaintainancetracker",
-    "slug": "expo-template-default",
+    "name": "AutoHome Care",
+    "slug": "autohomecare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "homevehiclemaintainancetracker",
+    "scheme": "autohomecare",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
