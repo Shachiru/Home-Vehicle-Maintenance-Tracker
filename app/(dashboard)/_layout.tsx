@@ -47,12 +47,12 @@ const DashboardLayout = () => {
           }}
         />
         <Tabs.Screen
-          name="tasks"
+          name="vehicles"
           options={{
-            title: "Task",
+            title: "Vehicles",
             tabBarIcon: (data) => (
               <MaterialIcons
-                name="check-circle"
+                name="directions-car"
                 size={data.size}
                 color={data.color}
               />
