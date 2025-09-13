@@ -1,5 +1,5 @@
 import { View, Text } from "react-native";
-import React, { createContext, ReactNode, useState } from "react";
+import React, { createContext, ReactNode, useContext, useState } from "react";
 import Loader from "@/components/Loader";
 
 interface LoaderContextType {
@@ -23,4 +23,8 @@ export const LoaderProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export default LoaderProvider;
+export const useLoader = () => {
+  const context = useContext(LoaderContext);
+  if (!context) throw new Error("useLoader must be used within LoaderProvider");
+  return context;
+};
