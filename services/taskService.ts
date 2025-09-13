@@ -1,75 +1,80 @@
+import { auth, db } from "@/firebase";
+import { Task } from "@/types/task";
 import {
-  addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
-  query,
+  addDoc,
   updateDoc,
-  where,
+  deleteDoc,
 } from "firebase/firestore";
-import api from "./config/api";
-import { Task } from "@/types/task";
-import { db } from "@/firebase";
 
-// for refer to collection
-export const taskColRef = collection(db, "tasks");
-
-// firebase firestore
-export const createTask = async (task: Task) => {
-  const docRef = await addDoc(taskColRef, task);
-  return docRef.id;
+// Check if user is authenticated
+const getCurrentUser = () => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+  return user;
 };
 
-export const updateTask = async (id: string, task: Task) => {
-  const docRef = doc(db, "tasks", id);
-  const { id: _id, ...taskData } = task;
-  return await updateDoc(docRef, taskData);
+// Get user-specific tasks collection
+const getUserTasksCollection = () => {
+  const user = getCurrentUser();
+  return collection(db, "users", user.uid, "tasks");
+};
+
+export const createTask = async (task: Omit<Task, "id">) => {
+  const user = getCurrentUser();
+  console.log("Creating task for user:", user.uid);
+
+  const tasksCollection = getUserTasksCollection();
+  const docRef = await addDoc(tasksCollection, {
+    ...task,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: user.uid, // Add user ID for extra security
+  });
+
+  console.log("Task created with ID:", docRef.id);
+  return docRef;
+};
+
+export const getAllTaskData = async (): Promise<Task[]> => {
+  const tasksCollection = getUserTasksCollection();
+  const snapshot = await getDocs(tasksCollection);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Task[];
+};
+
+export const getTaskById = async (id: string): Promise<Task | null> => {
+  const user = getCurrentUser();
+  const taskDoc = doc(db, "users", user.uid, "tasks", id);
+  const snapshot = await getDoc(taskDoc);
+
+  if (snapshot.exists()) {
+    return { id: snapshot.id, ...snapshot.data() } as Task;
+  }
+  return null;
+};
+
+export const updateTask = async (id: string, updates: Partial<Task>) => {
+  const user = getCurrentUser();
+  const taskDoc = doc(db, "users", user.uid, "tasks", id);
+  return await updateDoc(taskDoc, {
+    ...updates,
+    updatedAt: new Date(),
+  });
 };
 
 export const deleteTask = async (id: string) => {
-  const docRef = doc(db, "tasks", id);
-  return await deleteDoc(docRef);
+  const user = getCurrentUser();
+  const taskDoc = doc(db, "users", user.uid, "tasks", id);
+  return await deleteDoc(taskDoc);
 };
 
-export const getAllTaskData = async () => {
-  const snapshot = await getDocs(taskColRef);
-  const taskList = snapshot.docs.map((taskRef) => ({
-    id: taskRef.id,
-    ...taskRef.data(),
-  })) as Task[];
-  return taskList;
-};
-
-export const getTaskById = async (id: string) => {
-  const taskDocRef = doc(db, "tasks", id);
-  const snapshot = await getDoc(taskDocRef);
-  const task = snapshot.exists()
-    ? ({ id: snapshot.id, ...snapshot.data() } as Task)
-    : null;
-  return task;
-};
-
-export const getAllTaskByUserId = async (userId: string) => {
-  const q = query(taskColRef, where("userId", "==", userId));
-
-  const querySnapshot = await getDocs(q);
-  const taskList = querySnapshot.docs.map((taskRef) => ({
-    id: taskRef.id,
-    ...taskRef.data(),
-  })) as Task[];
-  return taskList;
-};
-
-// ================================================================
-// axios with mock server api intrigation
-export const getAllTask = async () => {
-  const res = await api.get("/task");
-  return res.data;
-};
-
-export const addTask = async (task: any) => {
-  const res = await api.post("/task", task);
-  return res.data;
-};
+// For real-time listeners
+export const getUserTasksColRef = () => getUserTasksCollection();

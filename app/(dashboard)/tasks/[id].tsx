@@ -3,18 +3,20 @@ import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createTask, getTaskById, updateTask } from "@/services/taskService";
 import { useLoader } from "@/context/LoaderContext";
+import { useAuth } from "@/context/AuthContext";
 
 const TaskFormScreen = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  // params.id = {id}
-  const isNew = !id || id === "new"; // null or id is new -> save
+  const isNew = !id || id === "new";
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const router = useRouter();
   const { hideLoader, showLoader } = useLoader();
+  const { user, loading, isAuthenticated } = useAuth();
+
   useEffect(() => {
     const load = async () => {
-      if (!isNew && id) {
+      if (!isNew && id && isAuthenticated) {
         try {
           showLoader();
           const task = await getTaskById(id);
@@ -22,35 +24,62 @@ const TaskFormScreen = () => {
             setTitle(task.title);
             setDescription(task.description);
           }
+        } catch (error) {
+          console.error("Error loading task:", error);
+          Alert.alert("Error", "Failed to load task");
         } finally {
           hideLoader();
         }
       }
     };
-    load();
-  }, [id]);
+
+    if (!loading) {
+      load();
+    }
+  }, [id, isAuthenticated, loading]);
 
   const handleSubmit = async () => {
-    // validations
-    if (!title.trim) {
+    if (!title.trim()) {
       Alert.alert("Validation", "Title is required");
       return;
     }
+
+    if (!isAuthenticated) {
+      Alert.alert("Error", "You must be logged in to save tasks");
+      return;
+    }
+
     try {
       showLoader();
       if (isNew) {
         await createTask({ title, description });
       } else {
-        await updateTask(id, { title, description });
+        await updateTask(id!, { title, description });
       }
       router.back();
     } catch (err) {
-      console.error("Error saving task : ", err);
-      Alert.alert("Error", "Fail to save task");
+      console.error("Error saving task:", err);
+      Alert.alert("Error", "Failed to save task");
     } finally {
       hideLoader();
     }
   };
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg">Please log in to manage tasks</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 w-full p-5">

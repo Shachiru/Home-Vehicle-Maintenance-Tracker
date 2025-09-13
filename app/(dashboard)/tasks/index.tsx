@@ -1,5 +1,10 @@
 import { useLoader } from "@/context/LoaderContext";
-import { getAllTaskData, taskColRef } from "@/services/taskService";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getAllTaskData,
+  getUserTasksColRef,
+  deleteTask,
+} from "@/services/taskService";
 import { Task } from "@/types/task";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -18,45 +23,84 @@ const TaskScreen = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
-
-  const handleFetchData = async () => {
-    showLoader();
-    await getAllTaskData()
-      .then((data) => {
-        setTasks(data);
-        console.log(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      })
-      .finally(() => {
-        hideLoader();
-      });
-  };
+  const { user, loading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    handleFetchData();
-  }, []);
+    if (!loading && isAuthenticated && user) {
+      let unsubscribe: (() => void) | undefined;
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(taskColRef, (snapshot) => {
-      const taskData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Task[];
-      setTasks(taskData);
-      hideLoader();
-    });
+      const setupListener = async () => {
+        try {
+          showLoader();
+          const tasksColRef = await getUserTasksColRef();
 
-    return () => unsubscribe();
-  }, []);
+          unsubscribe = onSnapshot(
+            tasksColRef,
+            (snapshot) => {
+              const taskData = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })) as Task[];
+              setTasks(taskData);
+              hideLoader();
+            },
+            (error) => {
+              console.error("Firestore error:", error);
+              hideLoader();
+              Alert.alert("Error", "Failed to load tasks");
+            }
+          );
+        } catch (error) {
+          console.error("Setup error:", error);
+          hideLoader();
+        }
+      };
 
-  const handleDelete = () => {
-    Alert.alert("Alert Title", "Alert Desc", [
+      setupListener();
+
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    }
+  }, [user, loading, isAuthenticated]);
+
+  const handleDelete = (taskId: string) => {
+    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
       { text: "Cancel" },
-      { text: "Delete", onPress: async () => {} },
+      {
+        text: "Delete",
+        onPress: async () => {
+          try {
+            showLoader();
+            await deleteTask(taskId);
+          } catch (error) {
+            console.error("Error deleting task:", error);
+            Alert.alert("Error", "Failed to delete task");
+          } finally {
+            hideLoader();
+          }
+        },
+      },
     ]);
   };
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg">Please log in to view tasks</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 w-full bg-white relative">
@@ -64,18 +108,14 @@ const TaskScreen = () => {
         Task Screen
       </Text>
 
-      {/* Floating Action Button - Bottom Right */}
       <Pressable
         className="absolute bottom-10 right-6 bg-blue-600 rounded-full p-4 shadow-2xl z-40"
         onPress={() => router.push("/(dashboard)/tasks/new")}
-        style={{
-          elevation: 8,
-        }}
+        style={{ elevation: 8 }}
       >
         <MaterialIcons name="add" size={30} color="#fff" />
       </Pressable>
 
-      {/* ScrollView without animations */}
       <ScrollView
         className="flex-1 w-full px-5 pt-4 pb-28"
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -107,7 +147,7 @@ const TaskScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 className="bg-red-500 px-5 py-2.5 rounded-lg shadow-md"
-                onPress={handleDelete}
+                onPress={() => task.id && handleDelete(task.id)}
               >
                 <Text className="text-white font-medium text-base">Delete</Text>
               </TouchableOpacity>
