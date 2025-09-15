@@ -5,6 +5,7 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
@@ -41,34 +42,51 @@ const HomeScreen = () => {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user) return;
 
     const loadData = async () => {
       try {
         showLoader();
-        // Load vehicles
+        console.log("Loading vehicles for user ID:", user.uid);
+
+        // Load vehicles with the fixed function
         const vehicleData = await getAllVehicles();
+        console.log("Vehicles loaded:", vehicleData.length);
         setVehicles(vehicleData);
 
-        // Load upcoming services
-        let allUpcomingTasks: MaintenanceTask[] = [];
-        for (const vehicle of vehicleData) {
-          const tasks = await getUpcomingMaintenanceTasks(vehicle.id);
-          allUpcomingTasks = [...allUpcomingTasks, ...tasks];
-        }
-        // Sort by due date or due mileage (closest first)
-        allUpcomingTasks.sort((a, b) => {
-          if (a.dueDate && b.dueDate) {
-            return (
-              new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-            );
+        if (vehicleData.length > 0) {
+          let allUpcomingTasks: MaintenanceTask[] = [];
+          for (const vehicle of vehicleData) {
+            try {
+              const tasks = await getUpcomingMaintenanceTasks(vehicle.id);
+              allUpcomingTasks = [...allUpcomingTasks, ...tasks];
+            } catch (vehicleError) {
+              console.error(
+                "Error loading maintenance for vehicle",
+                vehicle.id,
+                vehicleError
+              );
+            }
           }
-          return 0;
-        });
 
-        setUpcomingServices(allUpcomingTasks.slice(0, 5)); // Show only top 5
+          allUpcomingTasks.sort((a, b) => {
+            if (a.dueDate && b.dueDate) {
+              return (
+                new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+              );
+            }
+            return 0;
+          });
+
+          setUpcomingServices(allUpcomingTasks.slice(0, 5));
+        }
       } catch (error) {
         console.error("Error loading home data:", error);
+        // Show a more descriptive error message for troubleshooting
+        Alert.alert(
+          "Data Loading Error",
+          "Could not load your vehicle data. Please ensure you're signed in properly."
+        );
       } finally {
         hideLoader();
         setLoading(false);
@@ -76,7 +94,7 @@ const HomeScreen = () => {
     };
 
     loadData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.uid]);
 
   const handleAddVehicle = () => {
     router.push("../vehicles/new");
