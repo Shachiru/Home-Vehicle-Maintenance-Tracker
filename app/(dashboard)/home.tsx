@@ -82,7 +82,6 @@ const HomeScreen = () => {
         }
       } catch (error) {
         console.error("Error loading home data:", error);
-        // Show a more descriptive error message for troubleshooting
         Alert.alert(
           "Data Loading Error",
           "Could not load your vehicle data. Please ensure you're signed in properly."
@@ -109,19 +108,16 @@ const HomeScreen = () => {
   };
 
   const handleQuickService = () => {
-    // If they have at least one vehicle, take them to add maintenance for that vehicle
     if (vehicles.length > 0) {
       router.push(
         `../vehicles/maintenance/task/new?vehicleId=${vehicles[0].id}`
       );
     } else {
-      // If no vehicles, prompt to add one first
       alert("Please add a vehicle first before logging maintenance.");
       router.push("../vehicles/new");
     }
   };
 
-  // Helper to get priority level based on due date or mileage
   const getTaskPriority = (task: MaintenanceTask, vehicle?: Vehicle) => {
     if (!task) return "low";
 
@@ -129,14 +125,12 @@ const HomeScreen = () => {
     const in7Days = new Date();
     in7Days.setDate(today.getDate() + 7);
 
-    // Check due date
     if (task.dueDate) {
       const dueDate = new Date(task.dueDate);
       if (dueDate < today) return "high";
       if (dueDate < in7Days) return "medium";
     }
 
-    // Check mileage if we have the vehicle
     if (task.dueMileage && vehicle) {
       const milesUntilDue = task.dueMileage - vehicle.mileage;
       if (milesUntilDue <= 0) return "high";
@@ -146,7 +140,6 @@ const HomeScreen = () => {
     return "low";
   };
 
-  // Helper to format due date display
   const formatDueDate = (task: MaintenanceTask) => {
     if (!task.dueDate) return "";
 
@@ -168,12 +161,10 @@ const HomeScreen = () => {
     return `${monthNames[date.getMonth()]} ${date.getDate()}`;
   };
 
-  // Find the vehicle for a task
   const getVehicleForTask = (task: MaintenanceTask) => {
     return vehicles.find((v) => v.id === task.vehicleId);
   };
 
-  // Get vehicle status
   const getVehicleStatus = (vehicle: Vehicle) => {
     const tasks = upcomingServices.filter(
       (task) => task.vehicleId === vehicle.id
@@ -184,7 +175,6 @@ const HomeScreen = () => {
     return "good";
   };
 
-  // Get next service for vehicle
   const getNextService = (vehicle: Vehicle) => {
     const vehicleTasks = upcomingServices.filter(
       (task) => task.vehicleId === vehicle.id
@@ -192,7 +182,6 @@ const HomeScreen = () => {
     if (vehicleTasks.length === 0)
       return { service: "No services due", date: "" };
 
-    // Sort by priority
     vehicleTasks.sort((a, b) => {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       const priorityA = getTaskPriority(a, vehicle);
