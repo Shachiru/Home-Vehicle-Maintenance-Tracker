@@ -14,7 +14,6 @@ import {
   orderBy,
 } from "firebase/firestore";
 
-// Helper function to remove undefined fields
 const removeUndefinedFields = (obj: any) => {
   const result = { ...obj };
   Object.keys(result).forEach((key) => {
@@ -27,7 +26,6 @@ const removeUndefinedFields = (obj: any) => {
   return result;
 };
 
-// Check if user is authenticated
 const getCurrentUser = () => {
   const user = auth.currentUser;
   if (!user) {
@@ -36,13 +34,11 @@ const getCurrentUser = () => {
   return user;
 };
 
-// Get user-specific vehicles collection
 const getUserVehiclesCollection = () => {
   const user = getCurrentUser();
   return collection(db, "users", user.uid, "vehicles");
 };
 
-// Get maintenance tasks collection for a specific vehicle
 const getVehicleMaintenanceCollection = (vehicleId: string) => {
   const user = getCurrentUser();
   return collection(
@@ -55,11 +51,9 @@ const getVehicleMaintenanceCollection = (vehicleId: string) => {
   );
 };
 
-// Vehicle CRUD operations
 export const createVehicle = async (vehicle: Omit<Vehicle, "id">) => {
   const user = getCurrentUser();
 
-  // Clean data before sending to Firestore
   const cleanData = removeUndefinedFields(vehicle);
 
   const vehiclesCollection = getUserVehiclesCollection();
@@ -76,7 +70,6 @@ export const createVehicle = async (vehicle: Omit<Vehicle, "id">) => {
 
 export const getAllVehicles = async (): Promise<Vehicle[]> => {
   try {
-    // First try the nested collection structure
     const nestedCollection = getUserVehiclesCollection();
     const nestedSnapshot = await getDocs(nestedCollection);
 
@@ -89,7 +82,6 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
       return nestedVehicles;
     }
 
-    // If no vehicles found, try the flat collection with a query
     console.log("No vehicles in nested structure, trying flat structure");
     const flatCollection = collection(db, "vehicles");
     const flatQuery = query(
@@ -124,7 +116,6 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
 export const updateVehicle = async (id: string, updates: Partial<Vehicle>) => {
   const user = getCurrentUser();
 
-  // Clean data before sending to Firestore
   const cleanUpdates = removeUndefinedFields(updates);
 
   const vehicleDoc = doc(db, "users", user.uid, "vehicles", id);
@@ -144,7 +135,6 @@ export const updateVehicleMileage = async (id: string, newMileage: number) => {
     throw new Error("Vehicle not found");
   }
 
-  // Ensure mileage is only increasing
   if (newMileage < vehicle.mileage) {
     throw new Error("New mileage cannot be less than current mileage");
   }
@@ -158,7 +148,6 @@ export const deleteVehicle = async (id: string) => {
   return await deleteDoc(vehicleDoc);
 };
 
-// Maintenance tasks CRUD operations
 export const createMaintenanceTask = async (
   vehicleId: string,
   task: Omit<MaintenanceTask, "id" | "vehicleId">
@@ -259,7 +248,6 @@ export const updateMaintenanceTask = async (
 ) => {
   const user = getCurrentUser();
 
-  // Clean data before sending to Firestore
   const cleanUpdates = removeUndefinedFields(updates);
 
   const taskDoc = doc(
