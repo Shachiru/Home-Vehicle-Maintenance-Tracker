@@ -62,6 +62,8 @@ const MaintenanceScreen = () => {
                 id: doc.id,
                 ...doc.data(),
               })) as MaintenanceTask[];
+
+              console.log("Maintenance tasks loaded:", taskData.length);
               setTasks(taskData);
               hideLoader();
             },

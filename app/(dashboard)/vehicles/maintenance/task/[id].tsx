@@ -206,7 +206,7 @@ const MaintenanceTaskFormScreen = () => {
         await updateMaintenanceTask(vehicleId, id!, taskData);
       }
 
-      router.back();
+      router.replace(`../[vehicleId]?vehicleId=${vehicleId}`);
     } catch (err) {
       console.error("Error saving maintenance task:", err);
       Alert.alert("Error", "Failed to save maintenance task");

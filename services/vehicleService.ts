@@ -75,12 +75,39 @@ export const createVehicle = async (vehicle: Omit<Vehicle, "id">) => {
 };
 
 export const getAllVehicles = async (): Promise<Vehicle[]> => {
-  const vehiclesCollection = getUserVehiclesCollection();
-  const snapshot = await getDocs(vehiclesCollection);
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Vehicle[];
+  try {
+    // First try the nested collection structure
+    const nestedCollection = getUserVehiclesCollection();
+    const nestedSnapshot = await getDocs(nestedCollection);
+
+    const nestedVehicles = nestedSnapshot.docs.map((doc) => {
+      return { id: doc.id, ...doc.data() } as Vehicle;
+    });
+
+    if (nestedVehicles.length > 0) {
+      console.log("Found vehicles in nested structure");
+      return nestedVehicles;
+    }
+
+    // If no vehicles found, try the flat collection with a query
+    console.log("No vehicles in nested structure, trying flat structure");
+    const flatCollection = collection(db, "vehicles");
+    const flatQuery = query(
+      flatCollection,
+      where("userId", "==", auth.currentUser?.uid)
+    );
+    const flatSnapshot = await getDocs(flatQuery);
+
+    const flatVehicles = flatSnapshot.docs.map((doc) => {
+      return { id: doc.id, ...doc.data() } as Vehicle;
+    });
+
+    console.log(`Found ${flatVehicles.length} vehicles in flat structure`);
+    return flatVehicles;
+  } catch (error) {
+    console.error("Error getting vehicles:", error);
+    throw error;
+  }
 };
 
 export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
@@ -138,7 +165,6 @@ export const createMaintenanceTask = async (
 ) => {
   const user = getCurrentUser();
 
-  // Clean data before sending to Firestore
   const cleanTask = removeUndefinedFields(task);
 
   const tasksCollection = getVehicleMaintenanceCollection(vehicleId);
@@ -261,7 +287,6 @@ export const completeMaintenanceTask = async (
     receipts?: string[];
   }
 ) => {
-  // Clean data before sending to Firestore
   const cleanDetails = removeUndefinedFields(completionDetails);
 
   return updateMaintenanceTask(vehicleId, taskId, {
