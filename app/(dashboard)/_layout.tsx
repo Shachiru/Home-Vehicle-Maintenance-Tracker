@@ -1,11 +1,13 @@
 import { View, Text, ActivityIndicator, SafeAreaView } from "react-native";
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { Tabs, useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const DashboardLayout = () => {
   const { user, loading } = useAuth();
+  const { isDark } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -16,20 +18,40 @@ const DashboardLayout = () => {
 
   if (loading) {
     return (
-      <View>
-        <ActivityIndicator />
+      <View
+        className={`flex-1 justify-center items-center ${
+          isDark ? "bg-gray-900" : "bg-white"
+        }`}
+      >
+        <ActivityIndicator
+          color={isDark ? "#60a5fa" : "#3b82f6"}
+          size="large"
+        />
+        <Text className={`mt-4 ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+          Loading...
+        </Text>
       </View>
     );
   }
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className={`flex-1 ${isDark ? "bg-gray-900" : "bg-white"}`}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#2ecc71",
-          tabBarInactiveTintColor: "#2c3e50",
+          tabBarActiveTintColor: isDark ? "#60a5fa" : "#3b82f6", // Blue color for both themes but slightly different shades
+          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280", // Gray color, lighter for dark mode
           tabBarStyle: {
-            backgroundColor: "#bdc3c7",
+            backgroundColor: isDark ? "#1f2937" : "#ffffff", // Dark gray for dark mode, white for light mode
+            borderTopColor: isDark ? "#374151" : "#e5e7eb", // Border color
+            borderTopWidth: 1,
+            elevation: 0,
+            shadowOpacity: 0.1,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: "500",
+            marginBottom: 4,
           },
         }}
       >

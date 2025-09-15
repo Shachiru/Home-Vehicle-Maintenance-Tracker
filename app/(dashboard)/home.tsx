@@ -17,6 +17,7 @@ import { Vehicle } from "@/types/vehicle";
 import { MaintenanceTask } from "@/types/maintenanceTask";
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
+import { useTheme } from "@/context/ThemeContext";
 import { onSnapshot } from "firebase/firestore";
 
 const HomeScreen = () => {
@@ -29,6 +30,7 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated } = useAuth();
   const { showLoader, hideLoader } = useLoader();
+  const { isDark } = useTheme();
 
   // Stats calculation
   const quickStats = {
@@ -192,15 +194,24 @@ const HomeScreen = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text className="mt-4 text-gray-600">Loading your garage...</Text>
+      <View
+        className={`flex-1 justify-center items-center ${
+          isDark ? "bg-gray-900" : "bg-gray-50"
+        }`}
+      >
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#60a5fa" : "#3b82f6"}
+        />
+        <Text className={`mt-4 ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+          Loading your garage...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className={`flex-1 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Header */}
       <View className="bg-gradient-to-r from-blue-500 to-blue-600 pt-14 pb-6 px-6 shadow-lg">
         <View className="flex-row items-center justify-between mb-6">
@@ -234,31 +245,55 @@ const HomeScreen = () => {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Quick Stats Cards */}
         <View className="px-6 -mt-4 mb-6">
-          <View className="bg-white rounded-2xl p-6 shadow-md">
+          <View
+            className={`rounded-2xl p-6 shadow-md ${
+              isDark ? "bg-gray-800" : "bg-white"
+            }`}
+          >
             <View className="flex-row justify-between">
               <View className="items-center flex-1">
                 <Text className="text-2xl font-bold text-blue-600">
                   {quickStats.totalVehicles}
                 </Text>
-                <Text className="text-sm text-gray-600 mt-1 text-center">
+                <Text
+                  className={`text-sm mt-1 text-center ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
                   Vehicles
                 </Text>
               </View>
-              <View className="w-px h-12 bg-gray-200" />
+              <View
+                className={`w-px h-12 ${
+                  isDark ? "bg-gray-700" : "bg-gray-200"
+                }`}
+              />
               <View className="items-center flex-1">
                 <Text className="text-2xl font-bold text-orange-500">
                   {quickStats.upcomingServices}
                 </Text>
-                <Text className="text-sm text-gray-600 mt-1 text-center">
+                <Text
+                  className={`text-sm mt-1 text-center ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
                   Due Soon
                 </Text>
               </View>
-              <View className="w-px h-12 bg-gray-200" />
+              <View
+                className={`w-px h-12 ${
+                  isDark ? "bg-gray-700" : "bg-gray-200"
+                }`}
+              />
               <View className="items-center flex-1">
                 <Text className="text-2xl font-bold text-green-500">
                   {quickStats.completedThisMonth}
                 </Text>
-                <Text className="text-sm text-gray-600 mt-1 text-center">
+                <Text
+                  className={`text-sm mt-1 text-center ${
+                    isDark ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
                   This Month
                 </Text>
               </View>
@@ -268,7 +303,11 @@ const HomeScreen = () => {
 
         {/* Quick Actions */}
         <View className="px-6 mb-6">
-          <Text className="text-xl font-bold text-gray-800 mb-4">
+          <Text
+            className={`text-xl font-bold mb-4 ${
+              isDark ? "text-white" : "text-gray-800"
+            }`}
+          >
             Quick Actions
           </Text>
           <View className="flex-row justify-between">
@@ -307,19 +346,39 @@ const HomeScreen = () => {
         {/* My Vehicles */}
         <View className="px-6 mb-6">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-bold text-gray-800">My Vehicles</Text>
+            <Text
+              className={`text-xl font-bold ${
+                isDark ? "text-white" : "text-gray-800"
+              }`}
+            >
+              My Vehicles
+            </Text>
             <Pressable onPress={handleViewAllVehicles}>
               <Text className="text-blue-500 font-medium">View All</Text>
             </Pressable>
           </View>
 
           {vehicles.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 items-center">
+            <View
+              className={`rounded-2xl p-8 shadow-sm items-center ${
+                isDark
+                  ? "bg-gray-800 border border-gray-700"
+                  : "bg-white border border-gray-100"
+              }`}
+            >
               <Text className="text-4xl mb-3">🚗</Text>
-              <Text className="text-gray-700 font-medium text-center mb-2">
+              <Text
+                className={`font-medium text-center mb-2 ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
                 No vehicles yet
               </Text>
-              <Text className="text-gray-500 text-sm text-center mb-4">
+              <Text
+                className={`text-sm text-center mb-4 ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 Add your first vehicle to start tracking maintenance
               </Text>
               <Pressable
@@ -336,17 +395,29 @@ const HomeScreen = () => {
                 return (
                   <Pressable
                     key={vehicle.id}
-                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
+                    className={`rounded-2xl p-5 shadow-sm ${
+                      isDark
+                        ? "bg-gray-800 border border-gray-700"
+                        : "bg-white border border-gray-100"
+                    }`}
                     onPress={() => handleViewVehicle(vehicle.id)}
                   >
                     <View className="flex-row items-center">
-                      <View className="w-16 h-16 bg-blue-100 rounded-2xl justify-center items-center mr-4">
+                      <View
+                        className={`w-16 h-16 rounded-2xl justify-center items-center mr-4 ${
+                          isDark ? "bg-blue-900/30" : "bg-blue-100"
+                        }`}
+                      >
                         <Text className="text-3xl">🚗</Text>
                       </View>
 
                       <View className="flex-1">
                         <View className="flex-row items-center justify-between mb-1">
-                          <Text className="text-lg font-bold text-gray-800">
+                          <Text
+                            className={`text-lg font-bold ${
+                              isDark ? "text-white" : "text-gray-800"
+                            }`}
+                          >
                             {vehicle.make} {vehicle.model}
                           </Text>
                           <View
@@ -360,7 +431,11 @@ const HomeScreen = () => {
                           />
                         </View>
 
-                        <Text className="text-sm text-gray-500 mb-2">
+                        <Text
+                          className={`text-sm mb-2 ${
+                            isDark ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {vehicle.year} •{" "}
                           {vehicle.mileage
                             .toString()
@@ -369,12 +444,22 @@ const HomeScreen = () => {
                         </Text>
 
                         <View className="flex-row items-center">
-                          <Text className="text-sm text-gray-600">Next: </Text>
+                          <Text
+                            className={`text-sm ${
+                              isDark ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
+                            Next:{" "}
+                          </Text>
                           <Text className="text-sm font-medium text-blue-600">
                             {nextServiceInfo.service}
                           </Text>
                           {nextServiceInfo.date && (
-                            <Text className="text-sm text-gray-500 ml-2">
+                            <Text
+                              className={`text-sm ml-2 ${
+                                isDark ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               ({nextServiceInfo.date})
                             </Text>
                           )}
@@ -390,17 +475,35 @@ const HomeScreen = () => {
 
         {/* Upcoming Services */}
         <View className="px-6 mb-6">
-          <Text className="text-xl font-bold text-gray-800 mb-4">
+          <Text
+            className={`text-xl font-bold mb-4 ${
+              isDark ? "text-white" : "text-gray-800"
+            }`}
+          >
             Upcoming Services
           </Text>
 
           {upcomingServices.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 items-center">
+            <View
+              className={`rounded-2xl p-8 shadow-sm items-center ${
+                isDark
+                  ? "bg-gray-800 border border-gray-700"
+                  : "bg-white border border-gray-100"
+              }`}
+            >
               <Text className="text-4xl mb-3">🔧</Text>
-              <Text className="text-gray-700 font-medium text-center mb-2">
+              <Text
+                className={`font-medium text-center mb-2 ${
+                  isDark ? "text-gray-200" : "text-gray-700"
+                }`}
+              >
                 No upcoming services
               </Text>
-              <Text className="text-gray-500 text-sm text-center">
+              <Text
+                className={`text-sm text-center ${
+                  isDark ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 All caught up with maintenance!
               </Text>
             </View>
@@ -412,7 +515,11 @@ const HomeScreen = () => {
                 return (
                   <Pressable
                     key={service.id}
-                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+                    className={`rounded-xl p-4 shadow-sm ${
+                      isDark
+                        ? "bg-gray-800 border border-gray-700"
+                        : "bg-white border border-gray-100"
+                    }`}
                     onPress={() =>
                       router.push(
                         `../vehicles/maintenance/task/${service.id}?vehicleId=${service.vehicleId}`
@@ -421,10 +528,18 @@ const HomeScreen = () => {
                   >
                     <View className="flex-row items-center justify-between">
                       <View className="flex-1">
-                        <Text className="text-base font-semibold text-gray-800">
+                        <Text
+                          className={`text-base font-semibold ${
+                            isDark ? "text-white" : "text-gray-800"
+                          }`}
+                        >
                           {service.title}
                         </Text>
-                        <Text className="text-sm text-gray-500 mt-1">
+                        <Text
+                          className={`text-sm mt-1 ${
+                            isDark ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {vehicle
                             ? `${vehicle.make} ${vehicle.model}`
                             : "Unknown Vehicle"}
@@ -432,7 +547,11 @@ const HomeScreen = () => {
                       </View>
 
                       <View className="items-end">
-                        <Text className="text-sm font-medium text-gray-800">
+                        <Text
+                          className={`text-sm font-medium ${
+                            isDark ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
                           {service.dueDate
                             ? formatDueDate(service)
                             : "Mileage based"}
@@ -440,9 +559,15 @@ const HomeScreen = () => {
                         <View
                           className={`px-2 py-1 rounded-full mt-1 ${
                             priority === "high"
-                              ? "bg-red-100"
+                              ? isDark
+                                ? "bg-red-900/30"
+                                : "bg-red-100"
                               : priority === "medium"
-                              ? "bg-orange-100"
+                              ? isDark
+                                ? "bg-orange-900/30"
+                                : "bg-orange-100"
+                              : isDark
+                              ? "bg-green-900/30"
                               : "bg-green-100"
                           }`}
                         >
@@ -469,18 +594,36 @@ const HomeScreen = () => {
 
         {/* Tips & Reminders */}
         <View className="px-6 mb-8">
-          <Text className="text-xl font-bold text-gray-800 mb-4">
+          <Text
+            className={`text-xl font-bold mb-4 ${
+              isDark ? "text-white" : "text-gray-800"
+            }`}
+          >
             Tips & Reminders
           </Text>
 
-          <View className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl p-5 border border-blue-200">
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-blue-900/20 border-blue-800"
+                : "bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200"
+            }`}
+          >
             <View className="flex-row items-start">
               <Text className="text-2xl mr-3">💡</Text>
               <View className="flex-1">
-                <Text className="text-blue-800 font-semibold mb-1">
+                <Text
+                  className={`font-semibold mb-1 ${
+                    isDark ? "text-blue-400" : "text-blue-800"
+                  }`}
+                >
                   Maintenance Tip
                 </Text>
-                <Text className="text-blue-700 text-sm leading-5">
+                <Text
+                  className={`text-sm leading-5 ${
+                    isDark ? "text-blue-300" : "text-blue-700"
+                  }`}
+                >
                   Regular oil changes are crucial for engine health. Most
                   vehicles need an oil change every 5,000-7,500 miles depending
                   on driving conditions.
