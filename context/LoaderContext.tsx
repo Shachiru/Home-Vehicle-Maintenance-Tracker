@@ -1,30 +1,31 @@
-import { View, Text } from "react-native";
-import React, { createContext, ReactNode, useContext, useState } from "react";
-import Loader from "@/components/Loader";
+import React, { createContext, useContext, useState } from "react";
 
 interface LoaderContextType {
+  loading: boolean;
   showLoader: () => void;
   hideLoader: () => void;
 }
 
 const LoaderContext = createContext<LoaderContextType | undefined>(undefined);
 
-export const LoaderProvider = ({ children }: { children: ReactNode }) => {
-  const [visible, setVisible] = useState(false);
+export const LoaderProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [loading, setLoading] = useState(false);
 
-  const showLoader = () => setVisible(true);
-  const hideLoader = () => setVisible(false);
+  const showLoader = () => setLoading(true);
+  const hideLoader = () => setLoading(false);
 
   return (
-    <LoaderContext.Provider value={{ showLoader, hideLoader }}>
+    <LoaderContext.Provider value={{ loading, showLoader, hideLoader }}>
       {children}
-      <Loader visible={visible} />
     </LoaderContext.Provider>
   );
 };
 
 export const useLoader = () => {
   const context = useContext(LoaderContext);
-  if (!context) throw new Error("useLoader must be used within LoaderProvider");
+  if (!context)
+    throw new Error("useLoader must be used within a LoaderProvider");
   return context;
 };
