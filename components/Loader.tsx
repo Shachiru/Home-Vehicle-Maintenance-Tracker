@@ -1,18 +1,13 @@
-import { View, Text } from "react-native";
 import React from "react";
+import { View, Text, ActivityIndicator } from "react-native";
 
 interface LoaderProps {
   visible: boolean;
+  text?: string;
 }
 
-const Loader: React.FC<LoaderProps> = ({ visible }) => {
+const Loader: React.FC<LoaderProps> = ({ visible, text = "Loading..." }) => {
   if (!visible) return null;
-
-  return (
-    <View>
-      <Text>Loader</Text>
-    </View>
-  );
 };
 
 export default Loader;
