@@ -1,50 +1,155 @@
-# Welcome to your Expo app 👋
+# Home Vehicle Maintenance Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## AutoHome Care App
 
-## Get started
+![License](https://img.shields.io/github/license/Shachiru/Home-Vehicle-Maintenance-Tracker)
+![React Native](https://img.shields.io/badge/React%20Native-v0.70+-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-v4.8+-blue)
+![Firebase](https://img.shields.io/badge/Firebase-v9.0+-orange)
 
-1. Install dependencies
+## 📋 Overview
 
+Home Vehicle Maintenance Tracker is a mobile application designed to help vehicle owners keep track of their maintenance schedules, repair history, and vehicle information. Built with React Native and Firebase, this app provides an intuitive interface to record, track, and receive reminders for important maintenance tasks, all accessible from your mobile device.
+
+## ✨ Features
+
+- **User Authentication**: Secure login and registration using Firebase Authentication
+- **Multiple Vehicle Management**: Add and manage all your vehicles in one place
+- **Maintenance Logging**: Record oil changes, tire rotations, brake replacements, and more
+- **Service Reminders**: Get notifications for upcoming or overdue maintenance tasks
+- **Expense Tracking**: Keep track of all maintenance costs and view spending summaries
+- **Mileage Logging**: Record mileage for maintenance scheduling and fuel efficiency monitoring
+- **Service History**: Access your complete maintenance history for each vehicle
+- **Document Storage**: Save photos of receipts, warranties, and vehicle documents
+- **Offline Capability**: Use core features even without an internet connection
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: [React Native](https://reactnative.dev/) for cross-platform mobile development
+- **Language**: [TypeScript](https://www.typescriptlang.org/) for type-safe code
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [TailwindCSS-React-Native](https://github.com/marklawlor/tailwindcss-react-native)
+- **Navigation**: [React Navigation](https://reactnavigation.org/) for screen management
+- **State Management**: [React Context API](https://reactjs.org/docs/context.html) with hooks
+- **Forms**: [React Hook Form](https://react-hook-form.com/) for efficient form handling
+
+### Backend & Services
+- **Authentication**: [Firebase Authentication](https://firebase.google.com/products/auth) for user management
+- **Database**: [Cloud Firestore](https://firebase.google.com/products/firestore) for real-time data storage
+- **Storage**: [Firebase Storage](https://firebase.google.com/products/storage) for document and image storage
+- **Notifications**: [Firebase Cloud Messaging](https://firebase.google.com/products/cloud-messaging) for reminders
+- **Analytics**: [Firebase Analytics](https://firebase.google.com/products/analytics) for usage insights
+
+### Development Tools
+- **Package Manager**: [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
+- **Build Tool**: [Expo](https://expo.dev/) for simplified development and deployment
+- **Version Control**: Git with GitHub
+- **Linting & Formatting**: [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/)
+- **Testing**: [Jest](https://jestjs.io/) for unit testing
+
+## 📱 Screenshots
+
+*(Add screenshots of your application here)*
+
+<div align="center">
+  <img src="screenshots/login-screen.png" alt="Login Screen" width="30%">
+  <img src="screenshots/vehicle-list.png" alt="Vehicle List" width="30%">
+  <img src="screenshots/maintenance-details.png" alt="Maintenance Details" width="30%">
+</div>
+
+## 📥 Installation
+
+### Prerequisites
+- Node.js (v14.x or higher)
+- npm or Yarn
+- Expo CLI (`npm install -g expo-cli`)
+- Firebase account
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Shachiru/Home-Vehicle-Maintenance-Tracker.git
+   cd Home-Vehicle-Maintenance-Tracker
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
-2. Start the app
+3. **Firebase Configuration**
+   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com/)
+   - Enable Authentication, Firestore, and Storage services
+   - Get your Firebase configuration (apiKey, authDomain, etc.)
+   - Create a `.env` file in the project root with your Firebase config:
+     ```
+     FIREBASE_API_KEY=your_api_key
+     FIREBASE_AUTH_DOMAIN=your_auth_domain
+     FIREBASE_PROJECT_ID=your_project_id
+     FIREBASE_STORAGE_BUCKET=your_storage_bucket
+     FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+     FIREBASE_APP_ID=your_app_id
+     ```
 
+4. **Start the development server**
    ```bash
-   npx expo start
+   expo start
+   # or
+   npm start
+   # or
+   yarn start
    ```
 
-In the output, you'll find options to open the app in a
+5. **Run on a device or emulator**
+   - Scan the QR code with the Expo Go app on your Android/iOS device
+   - Press 'a' for Android emulator or 'i' for iOS simulator in the terminal
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🖥️ Usage Guide
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Getting Started
+1. **Create an Account**: Sign up using email/password or Google account
+2. **Add a Vehicle**: Tap "+" to add your vehicle with make, model, year, and additional details
+3. **Set Up Maintenance Tasks**: Configure recommended maintenance items for your vehicle
 
-## Get a fresh project
+### Daily Use
+1. **Log Maintenance**: Record service tasks with date, mileage, cost, and notes
+2. **View History**: See all past maintenance for each vehicle
+3. **Check Reminders**: Review upcoming or overdue maintenance items
+4. **Track Expenses**: Monitor your spending on vehicle maintenance
 
-When you're ready, run:
+### Advanced Features
+1. **Export Data**: Generate and share maintenance reports
+2. **Backup**: Sync data across devices with your Firebase account
+3. **Documents**: Store vehicle manuals, insurance papers, and registration documents
 
-```bash
-npm run reset-project
-```
+## 🚀 Roadmap
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- [ ] Barcode/VIN scanner for quick vehicle information entry
+- [ ] Fuel economy tracking and analysis
+- [ ] Integration with OBD-II adapters for diagnostic data
+- [ ] Dark mode and additional themes
+- [ ] Offline-first architecture for improved performance
+- [ ] Multiple language support
 
-## Learn more
+## 🤝 Contributing
 
-To learn more about developing your project with Expo, look at the following resources:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## Join the community
+## 📄 License
 
-Join our community of developers creating universal apps.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📞 Contact
+
+Shachiru - [GitHub Profile](https://github.com/Shachiru)
+
+Project Link: [https://github.com/Shachiru/Home-Vehicle-Maintenance-Tracker](https://github.com/Shachiru/Home-Vehicle-Maintenance-Tracker)
