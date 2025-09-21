@@ -6,18 +6,20 @@ import {
   Alert,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  createVehicle,
+  createVehicleWithImage,
   getVehicleById,
-  updateVehicle,
+  updateVehicleWithImage,
 } from "@/services/vehicleService";
 import { useLoader } from "@/context/LoaderContext";
 import { useAuth } from "@/context/AuthContext";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const fuelTypes = ["Gasoline", "Diesel", "Electric", "Hybrid", "Other"];
 
@@ -33,6 +35,10 @@ const VehicleFormScreen = () => {
   const [fuelType, setFuelType] = useState<string>("Gasoline");
   const [engineType, setEngineType] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
+  const [shouldRemoveImage, setShouldRemoveImage] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const router = useRouter();
   const { hideLoader, showLoader } = useLoader();
@@ -70,29 +76,64 @@ const VehicleFormScreen = () => {
   }, [id, isAuthenticated, loading]);
 
   const handleImagePick = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required",
-        "You need to grant permission to access your photos"
-      );
-      return;
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Required",
+          "You need to grant permission to access your photos"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"], // Updated to use string array
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.6, // Reduced quality to make file smaller
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        // Show loading indicator
+        setIsProcessingImage(true);
+
+        try {
+          // Get the URI of the selected image
+          const selectedAsset = result.assets[0];
+
+          // Store the local URI for processing during submission
+          setLocalImageUri(selectedAsset.uri);
+
+          // Show the selected image immediately (local preview)
+          setImageUrl(selectedAsset.uri);
+
+          // Reset remove flag if it was set
+          setShouldRemoveImage(false);
+
+          console.log("Image selected successfully:", selectedAsset.uri);
+        } catch (error) {
+          console.error("Error processing selected image:", error);
+          Alert.alert(
+            "Image Processing Warning",
+            "The image was selected but may not be processed correctly. You can continue or try a different image."
+          );
+        } finally {
+          setIsProcessingImage(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to select image. Please try again.");
+      setIsProcessingImage(false);
     }
+  };
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setImageUrl(result.assets[0].uri);
-      // In a real app, you would upload this to your storage service
-      // and then store the returned URL
-    }
+  const handleRemoveImage = () => {
+    setImageUrl("");
+    setLocalImageUri(null);
+    setShouldRemoveImage(true);
   };
 
   const validateForm = () => {
@@ -118,7 +159,9 @@ const VehicleFormScreen = () => {
     }
 
     try {
+      setIsSaving(true);
       showLoader();
+
       const vehicleData = {
         make,
         model,
@@ -128,20 +171,42 @@ const VehicleFormScreen = () => {
         mileage: parseInt(mileage),
         fuelType,
         engineType: engineType.trim() || undefined,
-        imageUrl: imageUrl || undefined,
+        // Don't include imageUrl here, it will be handled by the image processing functions
       };
 
       if (isNew) {
-        await createVehicle(vehicleData);
+        // For new vehicles, use createVehicleWithImage
+        await createVehicleWithImage(vehicleData, localImageUri || undefined);
       } else {
-        await updateVehicle(id!, vehicleData);
+        // For existing vehicles, use updateVehicleWithImage
+        await updateVehicleWithImage(
+          id!,
+          vehicleData,
+          localImageUri || undefined,
+          shouldRemoveImage
+        );
       }
+
+      // Return to vehicles list
       router.back();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving vehicle:", err);
-      Alert.alert("Error", "Failed to save vehicle");
+
+      // Provide more specific error messages
+      if (err.message && err.message.includes("Image too large")) {
+        Alert.alert(
+          "Image Error",
+          "The selected image is too large. Please choose a smaller image or reduce its quality."
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to save vehicle. The vehicle data was saved but there might have been an issue with the image."
+        );
+      }
     } finally {
       hideLoader();
+      setIsSaving(false);
     }
   };
 
@@ -163,26 +228,58 @@ const VehicleFormScreen = () => {
 
   return (
     <ScrollView className="flex-1 w-full p-5">
-      <Text className="text-2xl font-bold mb-4">
-        {isNew ? "Add Vehicle" : "Edit Vehicle"}
-      </Text>
+      <View className="flex-row items-center mb-4">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mr-4"
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-bold">
+          {isNew ? "Add Vehicle" : "Edit Vehicle"}
+        </Text>
+      </View>
 
-      <TouchableOpacity
-        onPress={handleImagePick}
-        className="mb-4 items-center justify-center"
-      >
+      {/* Image Section */}
+      <View className="mb-6 items-center">
+        <Text className="text-gray-700 mb-2 self-start">Vehicle Image</Text>
+
         {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            className="w-full h-48 rounded-lg"
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="w-full h-32 bg-gray-200 rounded-lg items-center justify-center">
-            <Text className="text-gray-500">Add Vehicle Image</Text>
+          <View className="relative">
+            <Image
+              source={{ uri: imageUrl }}
+              className="w-full h-48 rounded-lg"
+              resizeMode="cover"
+            />
+
+            <TouchableOpacity
+              onPress={handleRemoveImage}
+              className="absolute top-2 right-2 bg-red-500 rounded-full p-2"
+            >
+              <MaterialIcons name="close" size={20} color="white" />
+            </TouchableOpacity>
           </View>
+        ) : (
+          <TouchableOpacity
+            onPress={handleImagePick}
+            className="w-full h-48 bg-gray-200 rounded-lg items-center justify-center border-2 border-dashed border-gray-400"
+          >
+            <MaterialIcons name="add-a-photo" size={40} color="#9CA3AF" />
+            <Text className="text-gray-500 mt-2">Add Vehicle Image</Text>
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+
+        {imageUrl && (
+          <TouchableOpacity
+            onPress={handleImagePick}
+            className="mt-2 flex-row items-center"
+          >
+            <MaterialIcons name="edit" size={18} color="#3B82F6" />
+            <Text className="text-blue-500 ml-1">Change Image</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <Text className="text-gray-700 mb-1">Make*</Text>
       <TextInput
@@ -257,10 +354,20 @@ const VehicleFormScreen = () => {
       <TouchableOpacity
         className="bg-blue-500 rounded-md px-6 py-3 my-4"
         onPress={handleSubmit}
+        disabled={isProcessingImage || isSaving}
       >
-        <Text className="text-xl text-white text-center">
-          {isNew ? "Add Vehicle" : "Update Vehicle"}
-        </Text>
+        {isProcessingImage || isSaving ? (
+          <View className="flex-row justify-center items-center">
+            <ActivityIndicator size="small" color="white" />
+            <Text className="text-xl text-white text-center ml-2">
+              {isProcessingImage ? "Processing Image..." : "Saving..."}
+            </Text>
+          </View>
+        ) : (
+          <Text className="text-xl text-white text-center">
+            {isNew ? "Add Vehicle" : "Update Vehicle"}
+          </Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );

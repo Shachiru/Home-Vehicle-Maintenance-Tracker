@@ -19,43 +19,54 @@ import {
   View,
   SafeAreaView,
   StatusBar,
+  RefreshControl,
 } from "react-native";
 
 const VehicleScreen = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
   const { user, loading, isAuthenticated } = useAuth();
+
+  const loadVehicles = async () => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      showLoader();
+      const vehiclesColRef = await getUserVehiclesColRef();
+
+      return onSnapshot(
+        vehiclesColRef,
+        (snapshot) => {
+          const vehicleData = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Vehicle[];
+          setVehicles(vehicleData);
+          hideLoader();
+          setRefreshing(false);
+        },
+        (error) => {
+          console.error("Firestore error:", error);
+          hideLoader();
+          setRefreshing(false);
+          Alert.alert("Error", "Failed to load vehicles");
+        }
+      );
+    } catch (error) {
+      console.error("Setup error:", error);
+      hideLoader();
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       let unsubscribe: (() => void) | undefined;
 
       const setupListener = async () => {
-        try {
-          showLoader();
-          const vehiclesColRef = await getUserVehiclesColRef();
-
-          unsubscribe = onSnapshot(
-            vehiclesColRef,
-            (snapshot) => {
-              const vehicleData = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              })) as Vehicle[];
-              setVehicles(vehicleData);
-              hideLoader();
-            },
-            (error) => {
-              console.error("Firestore error:", error);
-              hideLoader();
-              Alert.alert("Error", "Failed to load vehicles");
-            }
-          );
-        } catch (error) {
-          console.error("Setup error:", error);
-          hideLoader();
-        }
+        unsubscribe = await loadVehicles();
       };
 
       setupListener();
@@ -67,6 +78,11 @@ const VehicleScreen = () => {
       };
     }
   }, [user, loading, isAuthenticated]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadVehicles();
+  };
 
   const handleDelete = (vehicleId: string) => {
     Alert.alert(
@@ -123,7 +139,16 @@ const VehicleScreen = () => {
 
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">My Vehicles</Text>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mr-3 p-1"
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900">My Vehicles</Text>
+        </View>
         <TouchableOpacity
           onPress={() => router.push("../vehicles/new")}
           className="w-10 h-10 justify-center items-center"
@@ -136,6 +161,14 @@ const VehicleScreen = () => {
       <ScrollView
         className="flex-1 px-4 py-4"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#3B82F6"]}
+            tintColor="#3B82F6"
+          />
+        }
       >
         {vehicles.length === 0 && (
           <View className="py-24 items-center justify-center">

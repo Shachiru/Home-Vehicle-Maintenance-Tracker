@@ -13,7 +13,6 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-import * as FileSystem from "expo-file-system";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const removeUndefinedFields = (obj: any) => {
@@ -53,25 +52,26 @@ const getVehicleMaintenanceCollection = (vehicleId: string) => {
   );
 };
 
+// Simplified image processing function that avoids using the problematic File API
 export const processImageForUpload = async (uri: string): Promise<string> => {
   try {
+    console.log("Processing image from URI:", uri);
+
+    // Just resize and compress the image without converting to base64
     const manipulatedImage = await manipulateAsync(
       uri,
-      [{ resize: { width: 800, height: 600 } }],
-      { compress: 0.7, format: SaveFormat.JPEG }
+      [{ resize: { width: 600, height: 400 } }],
+      { compress: 0.5, format: SaveFormat.JPEG }
     );
 
-    const base64Image = await FileSystem.readAsStringAsync(
-      manipulatedImage.uri,
-      {
-        encoding: "base64",
-      }
-    );
+    console.log("Image resized and compressed:", manipulatedImage.uri);
 
-    return `data:image/jpeg;base64,${base64Image}`;
+    // Return the processed image URI instead of trying to convert to base64
+    return manipulatedImage.uri;
   } catch (error) {
     console.error("Error processing image:", error);
-    throw new Error("Failed to process image for upload");
+    // Return original URI if processing fails
+    return uri;
   }
 };
 
@@ -84,15 +84,16 @@ export const createVehicleWithImage = async (
 
   if (localImageUri) {
     try {
-      const base64Image = await processImageForUpload(localImageUri);
-      vehicleData.imageUrl = base64Image;
+      console.log("Processing image for new vehicle");
+      const processedImageUri = await processImageForUpload(localImageUri);
+      vehicleData.imageUrl = processedImageUri;
     } catch (error) {
-      console.error("Image processing error:", error);
+      console.error("Image processing failed:", error);
+      vehicleData.imageUrl = localImageUri;
     }
   }
 
   const cleanData = removeUndefinedFields(vehicleData);
-
   const vehiclesCollection = getUserVehiclesCollection();
   const docRef = await addDoc(vehiclesCollection, {
     ...cleanData,
@@ -180,15 +181,16 @@ export const updateVehicleWithImage = async (
     updateData.imageUrl = undefined;
   } else if (localImageUri) {
     try {
-      const base64Image = await processImageForUpload(localImageUri);
-      updateData.imageUrl = base64Image;
+      console.log("Processing image for vehicle update");
+      const processedImageUri = await processImageForUpload(localImageUri);
+      updateData.imageUrl = processedImageUri;
     } catch (error) {
-      console.error("Image processing error:", error);
+      console.error("Image processing failed for update:", error);
+      updateData.imageUrl = localImageUri;
     }
   }
 
   const cleanUpdates = removeUndefinedFields(updateData);
-
   const vehicleDoc = doc(db, "users", user.uid, "vehicles", id);
   return await updateDoc(vehicleDoc, {
     ...cleanUpdates,
