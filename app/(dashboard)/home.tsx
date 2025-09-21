@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
   RefreshControl,
+  StatusBar,
 } from "react-native";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "expo-router";
@@ -21,9 +22,10 @@ import { MaintenanceTask } from "@/types/maintenanceTask";
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
   const router = useRouter();
@@ -33,21 +35,42 @@ const HomeScreen = () => {
   >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [imageLoading, setImageLoading] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const { showLoader, hideLoader } = useLoader();
   const { isDark } = useTheme();
 
-  // Animation refs
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const vehicleCardAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const vehicleCardAnim = useRef(new Animated.Value(0.95)).current;
+
+  // Pure monochromatic palette
+  const colors = {
+    pure: {
+      black: "#000000",
+      white: "#FFFFFF",
+    },
+    background: isDark ? "#000000" : "#FFFFFF",
+    card: isDark ? "#0A0A0A" : "#FFFFFF",
+    surface: isDark ? "#141414" : "#F8F8F8",
+    border: isDark ? "#1A1A1A" : "#EEEEEE",
+    text: {
+      primary: isDark ? "#FFFFFF" : "#000000",
+      secondary: isDark ? "#AAAAAA" : "#666666",
+      tertiary: isDark ? "#666666" : "#AAAAAA",
+    },
+    shadow: {
+      color: isDark ? "#000000" : "rgba(0, 0, 0, 0.08)",
+      colorStrong: isDark ? "#000000" : "rgba(0, 0, 0, 0.15)",
+    },
+    accent: "#000000",
+  };
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 900,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
@@ -55,9 +78,10 @@ const HomeScreen = () => {
         duration: 800,
         useNativeDriver: true,
       }),
-      Animated.timing(vehicleCardAnim, {
+      Animated.spring(vehicleCardAnim, {
         toValue: 1,
-        duration: 1200,
+        friction: 8,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -68,10 +92,7 @@ const HomeScreen = () => {
 
     try {
       showLoader();
-      console.log("Loading vehicles for user ID:", user.uid);
-
       const vehicleData = await getAllVehicles();
-      console.log("Vehicles loaded:", vehicleData.length);
       setVehicles(vehicleData);
 
       if (vehicleData.length > 0) {
@@ -81,34 +102,29 @@ const HomeScreen = () => {
         for (const vehicle of vehicleData) {
           try {
             const tasks = await getUpcomingMaintenanceTasks(vehicle.id);
-            // Add vehicle name to each task
             const tasksWithVehicle = tasks.map((task) => ({
               ...task,
               vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
             }));
             allUpcomingTasks = [...allUpcomingTasks, ...tasksWithVehicle];
-          } catch (vehicleError) {
+          } catch (error) {
             console.error(
               "Error loading maintenance for vehicle",
               vehicle.id,
-              vehicleError
+              error
             );
           }
         }
 
         // Sort by due date first, then by due mileage
         allUpcomingTasks.sort((a, b) => {
-          // If both have due dates, compare them
           if (a.dueDate && b.dueDate) {
             return (
               new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
             );
           }
-          // If only a has due date, prioritize it
           if (a.dueDate) return -1;
-          // If only b has due date, prioritize it
           if (b.dueDate) return 1;
-          // If neither has due date, compare mileage
           if (a.dueMileage && b.dueMileage) {
             return a.dueMileage - b.dueMileage;
           }
@@ -121,7 +137,7 @@ const HomeScreen = () => {
       console.error("Error loading home data:", error);
       Alert.alert(
         "Data Loading Error",
-        "Could not load your vehicle data. Please ensure you're signed in properly."
+        "Could not load your vehicle data. Please try again."
       );
     } finally {
       hideLoader();
@@ -153,16 +169,14 @@ const HomeScreen = () => {
 
   const handleScheduleService = () => {
     if (vehicles.length > 0) {
-      // Navigate to vehicles tab first, then handle service scheduling
       router.push(`/vehicles/maintenance/task/new?vehicleId=${vehicles[0].id}`);
     } else {
-      alert("Please add a vehicle first before scheduling maintenance.");
+      Alert.alert(
+        "No Vehicles",
+        "Please add a vehicle first before scheduling maintenance."
+      );
       router.push("../vehicles");
     }
-  };
-
-  const handleFindParts = () => {
-    alert("Find Parts feature coming soon!");
   };
 
   const formatDueDate = (task: MaintenanceTask) => {
@@ -180,9 +194,8 @@ const HomeScreen = () => {
     return `Due on ${date.toLocaleDateString()}`;
   };
 
-  const getTaskPriorityColor = (task: MaintenanceTask) => {
-    if (!task.dueDate && !task.dueMileage)
-      return isDark ? "#9ca3af" : "#6b7280";
+  const getTaskPriority = (task: MaintenanceTask) => {
+    if (!task.dueDate && !task.dueMileage) return "normal";
 
     if (task.dueDate) {
       const date = new Date(task.dueDate);
@@ -190,26 +203,34 @@ const HomeScreen = () => {
       const diffTime = date.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays <= 0) return "#ef4444";
-      if (diffDays < 7) return "#f59e0b";
+      if (diffDays <= 0) return "high";
+      if (diffDays < 7) return "medium";
     }
-
-    // Default color for normal priority
-    return "#10b981";
+    return "normal";
   };
 
   if (loading) {
     return (
       <View
-        className={`flex-1 justify-center items-center ${
-          isDark ? "bg-gray-900" : "bg-gray-50"
-        }`}
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background,
+        }}
       >
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         <ActivityIndicator
           size="large"
-          color={isDark ? "#60a5fa" : "#000000"}
+          color={isDark ? colors.pure.white : colors.pure.black}
         />
-        <Text className={`mt-4 ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+        <Text
+          style={{
+            marginTop: 16,
+            color: colors.text.secondary,
+            fontWeight: "500",
+          }}
+        >
           Loading your garage...
         </Text>
       </View>
@@ -217,33 +238,16 @@ const HomeScreen = () => {
   }
 
   return (
-    <View className={`flex-1 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
-      {/* Background Decoration */}
-      <View className="absolute inset-0">
-        <View
-          className={`absolute w-80 h-80 rounded-full ${
-            isDark ? "bg-gray-800/30" : "bg-gray-100"
-          }`}
-          style={{ top: -150, right: -100 }}
-        />
-        <View
-          className={`absolute w-96 h-96 rounded-full ${
-            isDark ? "bg-gray-700/20" : "bg-gray-200"
-          }`}
-          style={{ bottom: -200, left: -150 }}
-        />
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[isDark ? "#60a5fa" : "#3b82f6"]}
-            tintColor={isDark ? "#60a5fa" : "#3b82f6"}
+            tintColor={isDark ? colors.pure.white : colors.pure.black}
           />
         }
       >
@@ -254,441 +258,898 @@ const HomeScreen = () => {
           }}
         >
           {/* Header Section */}
-          <View className="pt-16 pb-8 px-6">
-            <View className="flex-row items-center justify-between mb-2">
+          <View
+            style={{ paddingTop: 60, paddingHorizontal: 24, marginBottom: 32 }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <View>
                 <Text
-                  className={`text-3xl font-bold ${
-                    isDark ? "text-white" : "text-black"
-                  }`}
+                  style={{
+                    fontSize: 32,
+                    fontWeight: "700",
+                    color: colors.text.primary,
+                    marginBottom: 8,
+                    letterSpacing: -0.5,
+                  }}
                 >
-                  Hello, {user?.displayName || "User"}
+                  {user?.displayName
+                    ? `Hello, ${user.displayName.split(" ")[0]}`
+                    : "Hello"}
                 </Text>
                 <Text
-                  className={`text-lg ${
-                    isDark ? "text-gray-400" : "text-gray-600"
-                  } mt-1`}
+                  style={{
+                    fontSize: 16,
+                    color: colors.text.secondary,
+                    letterSpacing: -0.2,
+                  }}
                 >
-                  Welcome to your vehicle dashboard
+                  Your vehicle dashboard
                 </Text>
               </View>
               <Pressable
-                className={`w-12 h-12 rounded-xl justify-center items-center ${
-                  isDark
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-200"
-                }`}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: colors.surface,
+                  shadowColor: colors.shadow.color,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 1,
+                  shadowRadius: 12,
+                  elevation: 5,
+                }}
                 onPress={() => router.push("../profile")}
               >
                 <Ionicons
-                  name="notifications-outline"
-                  size={24}
-                  color={isDark ? "#ffffff" : "#000000"}
+                  name="person-outline"
+                  size={22}
+                  color={colors.text.primary}
                 />
               </Pressable>
             </View>
           </View>
 
-          {/* Vehicle Status Card */}
-          {vehicles.length > 0 ? (
-            <View className="px-6 mb-8">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text
-                  className={`text-2xl font-bold ${
-                    isDark ? "text-white" : "text-black"
-                  }`}
+          {/* Vehicle Section */}
+          <View style={{ marginBottom: 40 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 24,
+                marginBottom: 20,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "600",
+                  color: colors.text.primary,
+                  letterSpacing: -0.3,
+                }}
+              >
+                My Vehicles
+              </Text>
+              {vehicles.length > 0 && (
+                <Pressable
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                  onPress={() => router.push("../vehicles")}
                 >
-                  My Vehicles
-                </Text>
-                <Pressable onPress={() => router.push("../vehicles")}>
                   <Text
-                    className={`${isDark ? "text-blue-400" : "text-blue-600"}`}
+                    style={{
+                      color: colors.text.primary,
+                      fontWeight: "500",
+                      marginRight: 4,
+                    }}
                   >
                     View All
                   </Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={colors.text.primary}
+                  />
                 </Pressable>
-              </View>
+              )}
+            </View>
 
+            {vehicles.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20 }}
+                contentContainerStyle={{ paddingLeft: 24, paddingRight: 8 }}
+                decelerationRate="fast"
+                snapToInterval={width * 0.85 + 20}
+                snapToAlignment="start"
               >
                 {vehicles.map((vehicle, index) => (
                   <Animated.View
                     key={vehicle.id}
                     style={{
-                      opacity: vehicleCardAnim,
                       transform: [{ scale: vehicleCardAnim }],
-                      marginLeft: index === 0 ? 0 : 12,
-                      marginRight: index === vehicles.length - 1 ? 0 : 0,
+                      width: width * 0.85,
+                      marginRight: 20,
+                      borderRadius: 24,
+                      overflow: "hidden",
+                      backgroundColor: colors.card,
+                      shadowColor: colors.shadow.colorStrong,
+                      shadowOffset: { width: 0, height: 15 },
+                      shadowOpacity: 1,
+                      shadowRadius: 30,
+                      elevation: 20,
                     }}
                   >
-                    <Pressable
-                      className={`rounded-3xl p-6 shadow-lg ${
-                        isDark
-                          ? "bg-gray-800 border border-gray-700"
-                          : "bg-white border border-gray-100"
-                      }`}
-                      onPress={() => handleViewVehicle(vehicle.id)}
+                    {/* Vehicle Image Header */}
+                    <View
                       style={{
-                        shadowColor: isDark ? "#000000" : "#000000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: isDark ? 0.3 : 0.1,
-                        shadowRadius: 12,
-                        elevation: 5,
-                        width: width * 0.8,
+                        height: 180,
+                        width: "100%",
+                        position: "relative",
                       }}
                     >
-                      <View className="flex-row items-center justify-between mb-3">
-                        <View className="flex-1">
-                          <Text
-                            className={`text-xl font-bold mb-1 ${
-                              isDark ? "text-white" : "text-black"
-                            }`}
-                            numberOfLines={1}
+                      {vehicle.imageUrl ? (
+                        <Image
+                          source={{ uri: vehicle.imageUrl }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={
+                            isDark
+                              ? ["#111111", "#222222"]
+                              : ["#f3f3f3", "#e0e0e0"]
+                          }
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="car"
+                            size={60}
+                            color={colors.text.tertiary}
+                          />
+                        </LinearGradient>
+                      )}
+
+                      {/* Overlay Gradient */}
+                      <LinearGradient
+                        colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.4)"]}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 100,
+                        }}
+                      />
+
+                      {/* Vehicle Name */}
+                      <View
+                        style={{
+                          position: "absolute",
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          padding: 20,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 22,
+                            fontWeight: "700",
+                            color: colors.pure.white,
+                            marginBottom: 4,
+                            textShadowColor: "rgba(0,0,0,0.5)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 4,
+                          }}
+                        >
+                          {vehicle.year} {vehicle.make} {vehicle.model}
+                        </Text>
+                        {vehicle.licensePlate && (
+                          <View
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.25)",
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: 8,
+                              alignSelf: "flex-start",
+                              backdropFilter: "blur(10px)",
+                            }}
                           >
-                            {vehicle.year} {vehicle.make} {vehicle.model}
-                          </Text>
-                          {vehicle.licensePlate && (
-                            <View className="bg-blue-100 self-start rounded-md px-2 py-1">
-                              <Text className="text-blue-800 text-xs font-medium">
-                                {vehicle.licensePlate}
-                              </Text>
+                            <Text
+                              style={{
+                                color: colors.pure.white,
+                                fontSize: 13,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {vehicle.licensePlate}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Vehicle Info Section */}
+                    <View style={{ padding: 20 }}>
+                      <View style={{ marginBottom: 24 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 16,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(0,0,0,0.03)",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              marginRight: 14,
+                            }}
+                          >
+                            <Ionicons
+                              name="speedometer-outline"
+                              size={20}
+                              color={colors.text.primary}
+                            />
+                          </View>
+                          <View>
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                color: colors.text.secondary,
+                                marginBottom: 2,
+                              }}
+                            >
+                              Mileage
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 16,
+                                fontWeight: "600",
+                                color: colors.text.primary,
+                              }}
+                            >
+                              {vehicle.mileage
+                                .toString()
+                                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
+                              miles
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          {vehicle.engineType && (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                flex: 1,
+                                marginRight: 12,
+                              }}
+                            >
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.05)"
+                                    : "rgba(0,0,0,0.03)",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  marginRight: 14,
+                                }}
+                              >
+                                <Ionicons
+                                  name="construct-outline"
+                                  size={18}
+                                  color={colors.text.primary}
+                                />
+                              </View>
+                              <View>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    color: colors.text.secondary,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  Engine
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: colors.text.primary,
+                                  }}
+                                  numberOfLines={1}
+                                >
+                                  {vehicle.engineType}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {vehicle.fuelType && (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                flex: 1,
+                              }}
+                            >
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.05)"
+                                    : "rgba(0,0,0,0.03)",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  marginRight: 14,
+                                }}
+                              >
+                                <Ionicons
+                                  name="flash-outline"
+                                  size={20}
+                                  color={colors.text.primary}
+                                />
+                              </View>
+                              <View>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    color: colors.text.secondary,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  Fuel
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: colors.text.primary,
+                                  }}
+                                >
+                                  {vehicle.fuelType}
+                                </Text>
+                              </View>
                             </View>
                           )}
                         </View>
-
-                        {/* Vehicle Image Section */}
-                        <View
-                          className={`w-16 h-16 rounded-2xl overflow-hidden justify-center items-center ${
-                            isDark ? "bg-gray-700" : "bg-gray-100"
-                          }`}
-                        >
-                          {vehicle.imageUrl ? (
-                            <>
-                              {imageLoading && (
-                                <View className="absolute inset-0 flex items-center justify-center z-10">
-                                  <ActivityIndicator
-                                    size="small"
-                                    color={isDark ? "#60a5fa" : "#3b82f6"}
-                                  />
-                                </View>
-                              )}
-                              <Image
-                                source={{ uri: vehicle.imageUrl }}
-                                className="w-full h-full"
-                                resizeMode="cover"
-                                onLoadStart={() => setImageLoading(true)}
-                                onLoad={() => setImageLoading(false)}
-                                onError={() => setImageLoading(false)}
-                              />
-                            </>
-                          ) : (
-                            <Text className="text-3xl">🚗</Text>
-                          )}
-                        </View>
                       </View>
 
-                      <View className="space-y-3 mt-2">
-                        <View className="flex-row items-center">
-                          <Ionicons
-                            name="speedometer-outline"
-                            size={16}
-                            color={isDark ? "#60a5fa" : "#3b82f6"}
-                            style={{ marginRight: 8 }}
-                          />
-                          <Text
-                            className={`${
-                              isDark ? "text-gray-300" : "text-gray-600"
-                            }`}
-                          >
-                            Mileage:{" "}
-                            {vehicle.mileage
-                              .toString()
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
-                            miles
-                          </Text>
-                        </View>
-
-                        {vehicle.engineType && (
-                          <View className="flex-row items-center">
-                            <Ionicons
-                              name="car-sport-outline"
-                              size={16}
-                              color={isDark ? "#60a5fa" : "#3b82f6"}
-                              style={{ marginRight: 8 }}
-                            />
-                            <Text
-                              className={`${
-                                isDark ? "text-gray-300" : "text-gray-600"
-                              }`}
-                            >
-                              Engine: {vehicle.engineType}
-                            </Text>
-                          </View>
-                        )}
-
-                        {vehicle.fuelType && (
-                          <View className="flex-row items-center">
-                            <MaterialCommunityIcons
-                              name="gas-station-outline"
-                              size={16}
-                              color={isDark ? "#60a5fa" : "#3b82f6"}
-                              style={{ marginRight: 8 }}
-                            />
-                            <Text
-                              className={`${
-                                isDark ? "text-gray-300" : "text-gray-600"
-                              }`}
-                            >
-                              Fuel: {vehicle.fuelType}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View className="mt-4 flex-row">
+                      <View style={{ flexDirection: "row" }}>
                         <Pressable
-                          className={`flex-1 rounded-xl py-2 mr-2 ${
-                            isDark ? "bg-blue-600" : "bg-blue-500"
-                          }`}
+                          style={{
+                            flex: 1,
+                            marginRight: 10,
+                            height: 50,
+                            borderRadius: 12,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: isDark
+                              ? colors.pure.white
+                              : colors.pure.black,
+                            shadowColor: colors.shadow.color,
+                            shadowOffset: { width: 0, height: 6 },
+                            shadowOpacity: 0.5,
+                            shadowRadius: 8,
+                            elevation: 4,
+                          }}
                           onPress={() => handleViewMaintenance(vehicle.id)}
                         >
-                          <Text className="text-white text-center font-medium">
+                          <Text
+                            style={{
+                              color: isDark
+                                ? colors.pure.black
+                                : colors.pure.white,
+                              fontWeight: "600",
+                              fontSize: 15,
+                            }}
+                          >
                             Maintenance
                           </Text>
                         </Pressable>
                         <Pressable
-                          className={`flex-1 rounded-xl py-2 ${
-                            isDark
-                              ? "bg-gray-700 border border-gray-600"
-                              : "bg-gray-200"
-                          }`}
+                          style={{
+                            flex: 1,
+                            height: 50,
+                            borderRadius: 12,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: "transparent",
+                            borderWidth: 1,
+                            borderColor: isDark
+                              ? "rgba(255,255,255,0.15)"
+                              : "rgba(0,0,0,0.15)",
+                          }}
                           onPress={() => handleViewVehicle(vehicle.id)}
                         >
                           <Text
-                            className={`text-center font-medium ${
-                              isDark ? "text-white" : "text-gray-800"
-                            }`}
+                            style={{
+                              color: colors.text.primary,
+                              fontWeight: "600",
+                              fontSize: 15,
+                            }}
                           >
                             Details
                           </Text>
                         </Pressable>
                       </View>
-                    </Pressable>
+                    </View>
                   </Animated.View>
                 ))}
               </ScrollView>
-            </View>
-          ) : (
-            // No Vehicle State
-            <View className="px-6 mb-8">
-              <Text
-                className={`text-2xl font-bold mb-4 ${
-                  isDark ? "text-white" : "text-black"
-                }`}
-              >
-                Vehicle Status
-              </Text>
-
-              <View
-                className={`rounded-3xl p-8 items-center shadow-lg ${
-                  isDark
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-100"
-                }`}
-              >
-                <Text className="text-6xl mb-4">🚗</Text>
-                <Text
-                  className={`text-xl font-bold mb-2 ${
-                    isDark ? "text-white" : "text-black"
-                  }`}
-                >
-                  No vehicles yet
-                </Text>
-                <Text
-                  className={`text-center mb-6 ${
-                    isDark ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  Add your first vehicle to start tracking maintenance
-                </Text>
+            ) : (
+              <View style={{ marginHorizontal: 24 }}>
                 <Pressable
-                  className={`px-8 py-4 rounded-2xl ${
-                    isDark ? "bg-blue-600" : "bg-black"
-                  }`}
+                  style={{
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    backgroundColor: colors.card,
+                    shadowColor: colors.shadow.colorStrong,
+                    shadowOffset: { width: 0, height: 10 },
+                    shadowOpacity: 1,
+                    shadowRadius: 20,
+                    elevation: 10,
+                  }}
                   onPress={handleAddVehicle}
                 >
-                  <Text className="text-white font-bold text-lg">
-                    Add Vehicle
-                  </Text>
+                  <LinearGradient
+                    colors={
+                      isDark ? ["#111111", "#222222"] : ["#f5f5f5", "#e0e0e0"]
+                    }
+                    style={{ padding: 32, alignItems: "center" }}
+                  >
+                    <View
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.1)"
+                          : "rgba(0,0,0,0.05)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: 24,
+                        shadowColor: colors.shadow.color,
+                        shadowOffset: { width: 0, height: 5 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 10,
+                      }}
+                    >
+                      <Ionicons
+                        name="car-outline"
+                        size={40}
+                        color={colors.text.primary}
+                      />
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 22,
+                        fontWeight: "700",
+                        color: colors.text.primary,
+                        marginBottom: 12,
+                        textAlign: "center",
+                      }}
+                    >
+                      No vehicles yet
+                    </Text>
+                    <Text
+                      style={{
+                        color: colors.text.secondary,
+                        textAlign: "center",
+                        marginBottom: 24,
+                        fontSize: 15,
+                        lineHeight: 22,
+                      }}
+                    >
+                      Add your first vehicle to start tracking maintenance and
+                      service history
+                    </Text>
+                    <Pressable
+                      style={{
+                        paddingHorizontal: 32,
+                        height: 56,
+                        borderRadius: 16,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        backgroundColor: isDark
+                          ? colors.pure.white
+                          : colors.pure.black,
+                        shadowColor: colors.shadow.colorStrong,
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 12,
+                        elevation: 6,
+                      }}
+                      onPress={handleAddVehicle}
+                    >
+                      <Text
+                        style={{
+                          color: isDark ? colors.pure.black : colors.pure.white,
+                          fontWeight: "700",
+                          fontSize: 16,
+                        }}
+                      >
+                        Add Vehicle
+                      </Text>
+                    </Pressable>
+                  </LinearGradient>
                 </Pressable>
               </View>
-            </View>
-          )}
+            )}
+          </View>
 
-          {/* Upcoming Maintenance */}
-          <View className="px-6 mb-8">
+          {/* Maintenance Section */}
+          <View style={{ marginBottom: 40, paddingHorizontal: 24 }}>
             <Text
-              className={`text-2xl font-bold mb-4 ${
-                isDark ? "text-white" : "text-black"
-              }`}
+              style={{
+                fontSize: 22,
+                fontWeight: "600",
+                color: colors.text.primary,
+                marginBottom: 20,
+                letterSpacing: -0.3,
+              }}
             >
               Upcoming Maintenance
             </Text>
 
-            {upcomingServices.length === 0 ? (
-              <View
-                className={`rounded-2xl p-8 items-center ${
-                  isDark
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-100"
-                }`}
-              >
-                <Text className="text-4xl mb-3">🔧</Text>
-                <Text
-                  className={`font-medium text-center ${
-                    isDark ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  No upcoming services
-                </Text>
-                <Text
-                  className={`text-sm text-center mt-2 ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  All caught up with maintenance!
-                </Text>
-              </View>
-            ) : (
-              <View className="space-y-4">
-                {upcomingServices.map((service) => (
-                  <Pressable
-                    key={service.id}
-                    className={`rounded-2xl p-5 shadow-sm ${
-                      isDark
-                        ? "bg-gray-800 border border-gray-700"
-                        : "bg-white border border-gray-100"
-                    }`}
-                    onPress={() =>
-                      router.push(`/vehicles/maintenance/${service.vehicleId}`)
-                    }
-                  >
-                    <View className="flex-row items-center">
+            {upcomingServices.length > 0 ? (
+              <View>
+                {upcomingServices.map((service, index) => {
+                  const priority = getTaskPriority(service);
+                  const priorityColors = {
+                    high: "#FF3B30",
+                    medium: "#FF9500",
+                    normal: "#007AFF",
+                  };
+                  const color = priorityColors[priority];
+
+                  return (
+                    <Pressable
+                      key={service.id}
+                      style={{
+                        marginBottom: 16,
+                        borderRadius: 18,
+                        backgroundColor: colors.card,
+                        shadowColor: colors.shadow.color,
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.8,
+                        shadowRadius: 16,
+                        elevation: 4,
+                        overflow: "hidden",
+                      }}
+                      onPress={() =>
+                        router.push(
+                          `/vehicles/maintenance/${service.vehicleId}`
+                        )
+                      }
+                    >
                       <View
-                        className={`w-12 h-12 rounded-xl justify-center items-center mr-4`}
                         style={{
-                          backgroundColor:
-                            getTaskPriorityColor(service) +
-                            (isDark ? "30" : "15"),
+                          padding: 20,
+                          flexDirection: "row",
+                          alignItems: "center",
                         }}
                       >
-                        <Ionicons
-                          name="build-outline"
-                          size={24}
-                          color={getTaskPriorityColor(service)}
-                        />
-                      </View>
-
-                      <View className="flex-1">
-                        <Text
-                          className={`text-lg font-bold ${
-                            isDark ? "text-white" : "text-black"
-                          }`}
-                          numberOfLines={1}
+                        <View
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 18,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: isDark
+                              ? `${color}15`
+                              : `${color}10`,
+                            marginRight: 16,
+                          }}
                         >
-                          {service.title}
-                        </Text>
-                        <Text
-                          className={`text-sm ${
-                            isDark ? "text-gray-400" : "text-gray-600"
-                          }`}
-                        >
-                          {service.vehicleName}
-                        </Text>
-                        <View className="flex-row items-center mt-1">
-                          <View
-                            className="h-2 w-2 rounded-full mr-2"
-                            style={{
-                              backgroundColor: getTaskPriorityColor(service),
-                            }}
+                          <Ionicons
+                            name="build-outline"
+                            size={24}
+                            color={color}
                           />
+                        </View>
+                        <View style={{ flex: 1 }}>
                           <Text
-                            className={`text-sm ${
-                              isDark ? "text-gray-400" : "text-gray-600"
-                            }`}
+                            style={{
+                              fontSize: 17,
+                              fontWeight: "600",
+                              color: colors.text.primary,
+                              marginBottom: 4,
+                            }}
                           >
-                            {formatDueDate(service)}
-                            {service.dueMileage &&
-                              ` • ${service.dueMileage.toLocaleString()} miles`}
+                            {service.title}
                           </Text>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              color: colors.text.secondary,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {service.vehicleName}
+                          </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                            }}
+                          >
+                            <View
+                              style={{
+                                height: 8,
+                                width: 8,
+                                borderRadius: 4,
+                                backgroundColor: color,
+                                marginRight: 8,
+                                shadowColor: color,
+                                shadowOffset: { width: 0, height: 0 },
+                                shadowOpacity: 0.6,
+                                shadowRadius: 4,
+                              }}
+                            />
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                color: colors.text.secondary,
+                                fontWeight: "500",
+                              }}
+                            >
+                              {formatDueDate(service)}
+                              {service.dueMileage &&
+                                ` • ${service.dueMileage.toLocaleString()} miles`}
+                            </Text>
+                          </View>
+                        </View>
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.05)"
+                              : "rgba(0,0,0,0.03)",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="chevron-forward"
+                            size={18}
+                            color={colors.text.secondary}
+                          />
                         </View>
                       </View>
 
-                      <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={isDark ? "#9ca3af" : "#6b7280"}
+                      {/* Colored bottom indicator */}
+                      <View
+                        style={{
+                          height: 3,
+                          backgroundColor: color,
+                          width: "100%",
+                        }}
                       />
-                    </View>
-                  </Pressable>
-                ))}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <View
+                style={{
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  backgroundColor: colors.card,
+                  shadowColor: colors.shadow.color,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 16,
+                  elevation: 4,
+                }}
+              >
+                <LinearGradient
+                  colors={
+                    isDark ? ["#111111", "#222222"] : ["#f5f5f5", "#e0e0e0"]
+                  }
+                  style={{ padding: 32, alignItems: "center" }}
+                >
+                  <View
+                    style={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: 35,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.05)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 20,
+                      shadowColor: colors.shadow.color,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                    }}
+                  >
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={36}
+                      color={colors.text.primary}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "700",
+                      color: colors.text.primary,
+                      marginBottom: 8,
+                      textAlign: "center",
+                    }}
+                  >
+                    No upcoming services
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.text.secondary,
+                      textAlign: "center",
+                      fontSize: 15,
+                    }}
+                  >
+                    All caught up with maintenance!
+                  </Text>
+                </LinearGradient>
               </View>
             )}
           </View>
 
           {/* Quick Actions */}
-          <View className="px-6 mb-8">
+          <View style={{ paddingHorizontal: 24 }}>
             <Text
-              className={`text-2xl font-bold mb-4 ${
-                isDark ? "text-white" : "text-black"
-              }`}
+              style={{
+                fontSize: 22,
+                fontWeight: "600",
+                color: colors.text.primary,
+                marginBottom: 20,
+                letterSpacing: -0.3,
+              }}
             >
               Quick Actions
             </Text>
-
-            <View className="flex-row space-x-4">
+            <View style={{ flexDirection: "row" }}>
               <Pressable
-                className={`rounded-2xl p-6 flex-1 items-center shadow-lg ${
-                  isDark ? "bg-blue-600" : "bg-black"
-                }`}
-                onPress={handleScheduleService}
                 style={{
-                  shadowColor: "#000000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 5,
+                  flex: 1,
+                  borderRadius: 20,
+                  marginRight: 12,
+                  backgroundColor: isDark
+                    ? colors.pure.white
+                    : colors.pure.black,
+                  shadowColor: colors.shadow.colorStrong,
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 16,
+                  elevation: 8,
+                  overflow: "hidden",
                 }}
+                onPress={handleScheduleService}
               >
-                <Ionicons name="calendar-outline" size={24} color="#ffffff" />
-                <Text className="text-white font-bold text-lg mt-2 text-center">
-                  Schedule Service
-                </Text>
+                <View style={{ padding: 24, alignItems: "center" }}>
+                  <View
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 30,
+                      backgroundColor: isDark
+                        ? "rgba(0,0,0,0.1)"
+                        : "rgba(255,255,255,0.2)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={28}
+                      color={isDark ? colors.pure.black : colors.pure.white}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      color: isDark ? colors.pure.black : colors.pure.white,
+                      fontWeight: "700",
+                      fontSize: 17,
+                      textAlign: "center",
+                    }}
+                  >
+                    Schedule Service
+                  </Text>
+                </View>
               </Pressable>
-
               <Pressable
-                className={`rounded-2xl p-6 flex-1 items-center shadow-sm ${
-                  isDark
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-200"
-                }`}
-                onPress={handleFindParts}
+                style={{
+                  flex: 1,
+                  borderRadius: 20,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  overflow: "hidden",
+                  shadowColor: colors.shadow.color,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  elevation: 4,
+                }}
+                onPress={() =>
+                  Alert.alert(
+                    "Coming Soon",
+                    "Find Parts feature will be available in a future update."
+                  )
+                }
               >
-                <Ionicons
-                  name="search-outline"
-                  size={24}
-                  color={isDark ? "#ffffff" : "#000000"}
-                />
-                <Text
-                  className={`font-bold text-lg mt-2 text-center ${
-                    isDark ? "text-white" : "text-black"
-                  }`}
-                >
-                  Find Parts
-                </Text>
+                <View style={{ padding: 24, alignItems: "center" }}>
+                  <View
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 30,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.03)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Ionicons
+                      name="search-outline"
+                      size={28}
+                      color={colors.text.primary}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      color: colors.text.primary,
+                      fontWeight: "700",
+                      fontSize: 17,
+                      textAlign: "center",
+                    }}
+                  >
+                    Find Parts
+                  </Text>
+                </View>
               </Pressable>
             </View>
           </View>

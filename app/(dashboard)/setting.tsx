@@ -627,13 +627,6 @@ const SettingScreen = () => {
         {/* Footer */}
         <View className="px-6 pb-8">
           <Text
-            className={`text-center text-xs ${
-              isDark ? "text-white/30" : "text-black/30"
-            }`}
-          >
-            Made with ❤️ by Auto Home Care Team
-          </Text>
-          <Text
             className={`text-center text-xs mt-1 ${
               isDark ? "text-white/20" : "text-black/20"
             }`}
