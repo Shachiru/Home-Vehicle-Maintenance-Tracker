@@ -69,7 +69,7 @@ const SettingScreen = () => {
 
   // Handle theme toggle with proper error handling and debouncing
   const handleThemeToggle = useCallback(async () => {
-    if (themeLoading) return; // Prevent toggle during loading
+    if (themeLoading) return;
 
     try {
       toggleTheme();
@@ -167,25 +167,25 @@ const SettingScreen = () => {
     );
   };
 
-  // Show loading overlay during theme switching to prevent navigation errors
+  // Show loading overlay during theme switching
   if (themeLoading) {
     return (
       <View
         style={{
           flex: 1,
-          backgroundColor: isDark ? "#111827" : "#f9fafb",
+          backgroundColor: isDark ? "#000000" : "#ffffff",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
         <ActivityIndicator
           size="large"
-          color={isDark ? "#60a5fa" : "#3b82f6"}
+          color={isDark ? "#ffffff" : "#000000"}
         />
         <Text
           style={{
             marginTop: 16,
-            color: isDark ? "#d1d5db" : "#6b7280",
+            color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
             fontSize: 16,
           }}
         >
@@ -195,407 +195,444 @@ const SettingScreen = () => {
     );
   }
 
+  // Setting Item Component
+  const SettingItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    rightElement,
+    showBorder = true,
+    danger = false,
+  }: {
+    icon: string;
+    title: string;
+    subtitle?: string;
+    onPress?: () => void;
+    rightElement?: React.ReactNode;
+    showBorder?: boolean;
+    danger?: boolean;
+  }) => (
+    <TouchableOpacity
+      className={`flex-row items-center px-6 py-4 ${
+        showBorder
+          ? `border-b ${isDark ? "border-white/5" : "border-black/5"}`
+          : ""
+      }`}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View
+        className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${
+          danger
+            ? isDark
+              ? "bg-red-500/10"
+              : "bg-red-500/10"
+            : isDark
+            ? "bg-white/5"
+            : "bg-black/5"
+        }`}
+      >
+        <MaterialIcons
+          name={icon as any}
+          size={24}
+          color={
+            danger
+              ? "#ef4444"
+              : isDark
+              ? "rgba(255,255,255,0.9)"
+              : "rgba(0,0,0,0.9)"
+          }
+        />
+      </View>
+      <View className="flex-1">
+        <Text
+          className={`text-base font-medium ${
+            danger ? "text-red-500" : isDark ? "text-white" : "text-black"
+          }`}
+        >
+          {title}
+        </Text>
+        {subtitle && (
+          <Text
+            className={`text-sm mt-0.5 ${
+              isDark ? "text-white/50" : "text-black/50"
+            }`}
+          >
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      {rightElement ||
+        (onPress && (
+          <MaterialIcons
+            name="chevron-right"
+            size={24}
+            color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
+          />
+        ))}
+    </TouchableOpacity>
+  );
+
+  // Section Header Component
+  const SectionHeader = ({ title }: { title: string }) => (
+    <Text
+      className={`text-xs font-semibold uppercase tracking-wider px-6 mb-3 ${
+        isDark ? "text-white/40" : "text-black/40"
+      }`}
+    >
+      {title}
+    </Text>
+  );
+
   return (
-    <View className={`flex-1 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
+    <View className={`flex-1 ${isDark ? "bg-black" : "bg-white"}`}>
       {/* Header */}
-      <View className="bg-gradient-to-r from-blue-500 to-blue-600 pt-16 pb-8 px-6">
-        <Text className="text-white text-2xl font-bold mb-1">Settings</Text>
-        <Text className="text-blue-100">Customize your app experience</Text>
+      <View className={`pt-16 pb-8 px-6 ${isDark ? "bg-black" : "bg-white"}`}>
+        <Text
+          className={`text-4xl font-bold ${
+            isDark ? "text-white" : "text-black"
+          }`}
+        >
+          Settings
+        </Text>
       </View>
 
-      <ScrollView className="flex-1">
-        {/* App Appearance */}
-        <View className="px-6 mt-6 mb-4">
-          <Text
-            className={`text-xl font-bold mb-3 ${
-              isDark ? "text-white" : "text-gray-800"
-            }`}
-          >
-            Appearance
-          </Text>
-
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* User Profile Section */}
+        <TouchableOpacity
+          className={`mx-6 mb-8 p-6 rounded-3xl flex-row items-center ${
+            isDark ? "bg-white/5" : "bg-black/5"
+          }`}
+          onPress={() => router.push("../profile")}
+          activeOpacity={0.8}
+        >
           <View
-            className={`rounded-xl shadow-sm p-2 ${
-              isDark ? "bg-gray-800" : "bg-white"
+            className={`w-20 h-20 rounded-full items-center justify-center mr-4 ${
+              isDark ? "bg-white/10" : "bg-black/10"
             }`}
           >
-            <TouchableOpacity
-              className="flex-row justify-between items-center p-3"
-              onPress={handleThemeToggle}
-              disabled={themeLoading}
+            <MaterialIcons
+              name="person"
+              size={36}
+              color={isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)"}
+            />
+          </View>
+          <View className="flex-1">
+            <Text
+              className={`text-xl font-semibold ${
+                isDark ? "text-white" : "text-black"
+              }`}
             >
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name={isDark ? "dark-mode" : "light-mode"}
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
-                />
-                <View>
-                  <Text
-                    className={`font-medium ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    Dark Mode
-                  </Text>
-                  <Text
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {isDark ? "Switch to light theme" : "Switch to dark theme"}
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={isDark}
-                onValueChange={handleThemeToggle}
-                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
-                thumbColor={isDark ? "#eff6ff" : "#f3f4f6"}
-                disabled={themeLoading}
-              />
-            </TouchableOpacity>
+              {user?.displayName || "User"}
+            </Text>
+            <Text
+              className={`text-sm mt-1 ${
+                isDark ? "text-white/60" : "text-black/60"
+              }`}
+            >
+              {user?.email || "Manage your profile"}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="chevron-right"
+            size={24}
+            color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
+          />
+        </TouchableOpacity>
 
-            <TouchableOpacity
-              className="flex-row justify-between items-center p-3"
-              onPress={toggleMeasurementUnit}
-            >
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="speed"
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
-                />
-                <View>
-                  <Text
-                    className={`font-medium ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    Measurement Unit
-                  </Text>
-                  <Text
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Currently using {measurementUnit}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row items-center">
-                <Text
-                  className={`mr-2 ${
-                    isDark ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  {measurementUnit === "miles" ? "mi" : "km"}
-                </Text>
+        {/* Preferences Section */}
+        <View className="mb-8">
+          <SectionHeader title="Preferences" />
+          <View
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
+            }`}
+          >
+            <SettingItem
+              icon={isDark ? "dark-mode" : "light-mode"}
+              title="Appearance"
+              subtitle={isDark ? "Dark theme" : "Light theme"}
+              rightElement={
                 <Switch
-                  value={measurementUnit === "kilometers"}
-                  onValueChange={toggleMeasurementUnit}
-                  trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
-                  thumbColor={
-                    measurementUnit === "kilometers" ? "#eff6ff" : "#f3f4f6"
-                  }
+                  value={isDark}
+                  onValueChange={handleThemeToggle}
+                  trackColor={{
+                    false: "rgba(0,0,0,0.1)",
+                    true: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.9)",
+                  }}
+                  thumbColor={isDark ? "#ffffff" : "#ffffff"}
+                  disabled={themeLoading}
+                  style={{ transform: [{ scale: 0.9 }] }}
                 />
-              </View>
-            </TouchableOpacity>
+              }
+            />
+            <SettingItem
+              icon="speed"
+              title="Distance Units"
+              subtitle={`Currently using ${measurementUnit}`}
+              rightElement={
+                <View className="flex-row items-center">
+                  <Text
+                    className={`text-sm font-medium mr-3 ${
+                      isDark ? "text-white/70" : "text-black/70"
+                    }`}
+                  >
+                    {measurementUnit === "miles" ? "MI" : "KM"}
+                  </Text>
+                  <Switch
+                    value={measurementUnit === "kilometers"}
+                    onValueChange={toggleMeasurementUnit}
+                    trackColor={{
+                      false: "rgba(0,0,0,0.1)",
+                      true: isDark
+                        ? "rgba(255,255,255,0.3)"
+                        : "rgba(0,0,0,0.9)",
+                    }}
+                    thumbColor={isDark ? "#ffffff" : "#ffffff"}
+                    style={{ transform: [{ scale: 0.9 }] }}
+                  />
+                </View>
+              }
+              showBorder={false}
+            />
           </View>
         </View>
 
-        {/* Notifications */}
-        <View className="px-6 mb-4">
-          <Text
-            className={`text-xl font-bold mb-3 ${
-              isDark ? "text-white" : "text-gray-800"
-            }`}
-          >
-            Notifications
-          </Text>
-
+        {/* Notifications Section */}
+        <View className="mb-8">
+          <SectionHeader title="Notifications" />
           <View
-            className={`rounded-xl shadow-sm p-2 ${
-              isDark ? "bg-gray-800" : "bg-white"
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
             }`}
           >
-            <View className="flex-row justify-between items-center p-3">
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="notifications"
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
+            <SettingItem
+              icon="notifications"
+              title="Push Notifications"
+              subtitle="Receive alerts on your device"
+              rightElement={
+                <Switch
+                  value={pushNotifications}
+                  onValueChange={togglePushNotifications}
+                  trackColor={{
+                    false: "rgba(0,0,0,0.1)",
+                    true: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.9)",
+                  }}
+                  thumbColor={isDark ? "#ffffff" : "#ffffff"}
+                  style={{ transform: [{ scale: 0.9 }] }}
                 />
-                <View>
-                  <Text
-                    className={`font-medium ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    Push Notifications
-                  </Text>
-                  <Text
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Get alerts on your device
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={pushNotifications}
-                onValueChange={togglePushNotifications}
-                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
-                thumbColor={pushNotifications ? "#eff6ff" : "#f3f4f6"}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center p-3">
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="email"
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
+              }
+            />
+            <SettingItem
+              icon="email"
+              title="Email Notifications"
+              subtitle="Get updates in your inbox"
+              rightElement={
+                <Switch
+                  value={emailNotifications}
+                  onValueChange={toggleEmailNotifications}
+                  trackColor={{
+                    false: "rgba(0,0,0,0.1)",
+                    true: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.9)",
+                  }}
+                  thumbColor={isDark ? "#ffffff" : "#ffffff"}
+                  style={{ transform: [{ scale: 0.9 }] }}
                 />
-                <View>
-                  <Text
-                    className={`font-medium ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    Email Notifications
-                  </Text>
-                  <Text
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Receive updates via email
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={emailNotifications}
-                onValueChange={toggleEmailNotifications}
-                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
-                thumbColor={emailNotifications ? "#eff6ff" : "#f3f4f6"}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center p-3">
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="update"
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
+              }
+            />
+            <SettingItem
+              icon="event"
+              title="Maintenance Reminders"
+              subtitle="Never miss scheduled maintenance"
+              rightElement={
+                <Switch
+                  value={maintenanceReminders}
+                  onValueChange={toggleMaintenanceReminders}
+                  trackColor={{
+                    false: "rgba(0,0,0,0.1)",
+                    true: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.9)",
+                  }}
+                  thumbColor={isDark ? "#ffffff" : "#ffffff"}
+                  style={{ transform: [{ scale: 0.9 }] }}
                 />
-                <View>
-                  <Text
-                    className={`font-medium ${
-                      isDark ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    Maintenance Reminders
-                  </Text>
-                  <Text
-                    className={`text-xs ${
-                      isDark ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Get reminded about upcoming maintenance
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={maintenanceReminders}
-                onValueChange={toggleMaintenanceReminders}
-                trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
-                thumbColor={maintenanceReminders ? "#eff6ff" : "#f3f4f6"}
-              />
-            </View>
+              }
+              showBorder={false}
+            />
           </View>
         </View>
 
-        {/* Data & Privacy */}
-        <View className="px-6 mb-4">
-          <Text
-            className={`text-xl font-bold mb-3 ${
-              isDark ? "text-white" : "text-gray-800"
-            }`}
-          >
-            Data & Privacy
-          </Text>
-
+        {/* Data Management Section */}
+        <View className="mb-8">
+          <SectionHeader title="Data Management" />
           <View
-            className={`rounded-xl shadow-sm ${
-              isDark ? "bg-gray-800" : "bg-white"
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
             }`}
           >
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-4 border-b ${
-                isDark ? "border-gray-700" : "border-gray-100"
-              }`}
+            <SettingItem
+              icon="cloud-download"
+              title="Export Data"
+              subtitle="Download your data as a file"
               onPress={handleExportData}
-            >
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="download"
-                  size={24}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                  style={{ marginRight: 12 }}
-                />
-                <Text
-                  className={`font-medium ${
-                    isDark ? "text-white" : "text-gray-800"
-                  }`}
-                >
-                  Export My Data
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#9ca3af" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-row justify-between items-center p-4"
+            />
+            <SettingItem
+              icon="delete-forever"
+              title="Clear All Data"
+              subtitle="Permanently delete all records"
               onPress={handleClearData}
-            >
-              <View className="flex-row items-center">
-                <MaterialIcons
-                  name="delete-outline"
-                  size={24}
-                  color="#ef4444"
-                  style={{ marginRight: 12 }}
-                />
-                <Text className="font-medium text-red-500">Clear All Data</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#9ca3af" />
-            </TouchableOpacity>
+              showBorder={false}
+              danger
+            />
           </View>
         </View>
 
-        {/* About */}
-        <View className="px-6 mb-4">
-          <Text
-            className={`text-xl font-bold mb-3 ${
-              isDark ? "text-white" : "text-gray-800"
-            }`}
-          >
-            About
-          </Text>
-
+        {/* Support Section */}
+        <View className="mb-8">
+          <SectionHeader title="Support" />
           <View
-            className={`rounded-xl shadow-sm p-2 ${
-              isDark ? "bg-gray-800" : "bg-white"
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
             }`}
           >
-            <View className="p-3">
-              <Text
-                className={`font-medium ${
-                  isDark ? "text-white" : "text-gray-800"
-                }`}
-              >
-                Auto Home Care
-              </Text>
-              <Text
-                className={`text-xs mt-1 ${
-                  isDark ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                Version {appVersion} (Build {buildVersion})
-              </Text>
-            </View>
+            <SettingItem
+              icon="help-outline"
+              title="Help Center"
+              subtitle="Get help and support"
+              onPress={() => Alert.alert("Help Center", "Coming soon!")}
+            />
+            <SettingItem
+              icon="feedback"
+              title="Send Feedback"
+              subtitle="Share your thoughts with us"
+              onPress={() => Alert.alert("Feedback", "Coming soon!")}
+              showBorder={false}
+            />
+          </View>
+        </View>
 
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-3 border-t ${
-                isDark ? "border-gray-700" : "border-gray-100"
-              }`}
+        {/* Legal Section */}
+        <View className="mb-8">
+          <SectionHeader title="Legal" />
+          <View
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
+            }`}
+          >
+            <SettingItem
+              icon="privacy-tip"
+              title="Privacy Policy"
+              subtitle="How we handle your data"
               onPress={() =>
                 Alert.alert(
                   "Privacy Policy",
                   "Our privacy policy details will be displayed here."
                 )
               }
-            >
-              <Text className={`${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                Privacy Policy
-              </Text>
-              <MaterialIcons name="chevron-right" size={24} color="#9ca3af" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className={`flex-row justify-between items-center p-3 border-t ${
-                isDark ? "border-gray-700" : "border-gray-100"
-              }`}
+            />
+            <SettingItem
+              icon="description"
+              title="Terms of Service"
+              subtitle="Terms and conditions"
               onPress={() =>
                 Alert.alert(
                   "Terms of Service",
                   "Our terms of service will be displayed here."
                 )
               }
-            >
-              <Text className={`${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                Terms of Service
+              showBorder={false}
+            />
+          </View>
+        </View>
+
+        {/* About Section */}
+        <View className="mb-8">
+          <SectionHeader title="About" />
+          <View
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
+            }`}
+          >
+            <View className="px-6 py-4">
+              <View className="flex-row items-center mb-4">
+                <View
+                  className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${
+                    isDark ? "bg-white/10" : "bg-black/10"
+                  }`}
+                >
+                  <MaterialIcons
+                    name="directions-car"
+                    size={24}
+                    color={isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)"}
+                  />
+                </View>
+                <View>
+                  <Text
+                    className={`text-lg font-semibold ${
+                      isDark ? "text-white" : "text-black"
+                    }`}
+                  >
+                    Auto Home Care
+                  </Text>
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-white/50" : "text-black/50"
+                    }`}
+                  >
+                    Version {appVersion} (Build {buildVersion})
+                  </Text>
+                </View>
+              </View>
+              <Text
+                className={`text-sm leading-5 ${
+                  isDark ? "text-white/40" : "text-black/40"
+                }`}
+              >
+                Your trusted companion for vehicle maintenance and care. Keep
+                track of all your vehicles in one place.
               </Text>
-              <MaterialIcons name="chevron-right" size={24} color="#9ca3af" />
+            </View>
+          </View>
+        </View>
+
+        {/* Account Actions */}
+        <View className="mb-8">
+          <SectionHeader title="Account" />
+          <View
+            className={`mx-6 rounded-3xl overflow-hidden ${
+              isDark ? "bg-white/5" : "bg-black/5"
+            }`}
+          >
+            <TouchableOpacity
+              className="flex-row items-center px-6 py-4"
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <View
+                className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 bg-red-500/10`}
+              >
+                <MaterialIcons name="logout" size={24} color="#ef4444" />
+              </View>
+              <Text className="text-base font-medium text-red-500">
+                Sign Out
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Account */}
-        <View className="px-6 mb-10">
+        {/* Footer */}
+        <View className="px-6 pb-8">
           <Text
-            className={`text-xl font-bold mb-3 ${
-              isDark ? "text-white" : "text-gray-800"
+            className={`text-center text-xs mt-1 ${
+              isDark ? "text-white/20" : "text-black/20"
             }`}
           >
-            Account
+            © 2025 Auto Home Care. All rights reserved.
           </Text>
-
-          <View
-            className={`rounded-xl shadow-sm ${
-              isDark ? "bg-gray-800" : "bg-white"
-            }`}
-          >
-            <TouchableOpacity
-              className="flex-row items-center p-4"
-              onPress={() => router.push("../profile")}
-            >
-              <MaterialIcons
-                name="person"
-                size={24}
-                color={isDark ? "#60a5fa" : "#3b82f6"}
-                style={{ marginRight: 12 }}
-              />
-              <Text
-                className={`font-medium ${
-                  isDark ? "text-white" : "text-gray-800"
-                }`}
-              >
-                Edit Profile
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className={`flex-row items-center p-4 border-t ${
-                isDark ? "border-gray-700" : "border-gray-100"
-              }`}
-              onPress={handleLogout}
-            >
-              <MaterialIcons
-                name="logout"
-                size={24}
-                color="#ef4444"
-                style={{ marginRight: 12 }}
-              />
-              <Text className="font-medium text-red-500">Logout</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </View>

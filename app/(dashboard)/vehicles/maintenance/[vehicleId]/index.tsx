@@ -116,19 +116,19 @@ const MaintenanceScreen = () => {
 
   const getTaskStatusStyle = (task: MaintenanceTask) => {
     if (task.completed) {
-      return "bg-green-100 border-green-300";
+      return "border-gray-200";
     }
 
     // Check if task is overdue
     if (task.dueDate && new Date(task.dueDate) < new Date()) {
-      return "bg-red-100 border-red-300";
+      return "border-black";
     }
 
     if (task.dueMileage && vehicle && task.dueMileage <= vehicle.mileage) {
-      return "bg-red-100 border-red-300";
+      return "border-black";
     }
 
-    return "bg-yellow-50 border-yellow-200";
+    return "border-gray-300";
   };
 
   const getTaskStatusText = (task: MaintenanceTask) => {
@@ -148,211 +148,271 @@ const MaintenanceScreen = () => {
     return "Scheduled";
   };
 
+  const getStatusDotColor = (task: MaintenanceTask) => {
+    if (task.completed) return "bg-gray-400";
+
+    const isOverdueMileage =
+      task.dueMileage && vehicle && task.dueMileage <= vehicle.mileage;
+    const isOverdueDate = task.dueDate && new Date(task.dueDate) < new Date();
+
+    if (isOverdueMileage || isOverdueDate) return "bg-black";
+
+    return "bg-gray-600";
+  };
+
   const filteredTasks = showCompleted
     ? tasks
     : tasks.filter((task) => !task.completed);
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Loading...</Text>
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text className="text-lg text-gray-600">Loading...</Text>
       </View>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Please log in to view maintenance tasks</Text>
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text className="text-lg text-gray-600">
+          Please log in to view maintenance tasks
+        </Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 w-full bg-white relative">
-      <View className="pt-12 pb-4 px-5 bg-blue-900">
-        <TouchableOpacity onPress={() => router.back()} className="mb-2">
+    <View className="flex-1 w-full bg-gray-50 relative">
+      {/* Header */}
+      <View className="pt-12 pb-6 px-6 bg-black">
+        <TouchableOpacity onPress={() => router.back()} className="mb-4">
           <View className="flex-row items-center">
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-            <Text className="text-white ml-1">Back to Vehicles</Text>
+            <MaterialIcons name="arrow-back-ios" size={20} color="#fff" />
+            <Text className="text-white ml-1 text-sm">Back</Text>
           </View>
         </TouchableOpacity>
 
-        <Text className="text-2xl text-white font-bold">
+        <Text className="text-3xl text-white font-bold">
           {vehicle
             ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
-            : "Vehicle Maintenance"}
+            : "Maintenance"}
         </Text>
 
         {vehicle && (
-          <Text className="text-blue-200 mt-1">
-            Current Mileage:{" "}
-            {vehicle.mileage.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
-            miles
-          </Text>
+          <View className="flex-row items-center mt-2">
+            <View className="w-2 h-2 bg-white rounded-full mr-2 opacity-60" />
+            <Text className="text-white opacity-80 text-sm">
+              {vehicle.mileage.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
+              miles
+            </Text>
+          </View>
         )}
       </View>
 
-      <View className="flex-row justify-between items-center px-5 py-3 bg-gray-100">
-        <Text className="text-lg font-semibold">Maintenance Tasks</Text>
+      {/* Filter Bar */}
+      <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-100">
+        <Text className="text-base font-semibold text-black">
+          {filteredTasks.length} {filteredTasks.length === 1 ? "Task" : "Tasks"}
+        </Text>
         <View className="flex-row items-center">
-          <Text className="mr-2 text-gray-600">Show Completed</Text>
+          <Text className="mr-3 text-gray-600 text-sm">Completed</Text>
           <Switch
             value={showCompleted}
             onValueChange={setShowCompleted}
-            trackColor={{ false: "#d1d5db", true: "#93c5fd" }}
-            thumbColor={showCompleted ? "#3b82f6" : "#f4f4f5"}
+            trackColor={{ false: "#e5e5e5", true: "#000000" }}
+            thumbColor="#ffffff"
+            ios_backgroundColor="#e5e5e5"
           />
         </View>
       </View>
 
+      {/* FAB */}
       <Pressable
-        className="absolute bottom-10 right-6 bg-blue-600 rounded-full p-4 shadow-2xl z-40"
+        className="absolute bottom-8 right-6 bg-black rounded-full p-4 shadow-2xl z-40"
         onPress={() =>
           router.push(`/vehicles/maintenance/task/new?vehicleId=${vehicleId}`)
         }
-        style={{ elevation: 8 }}
+        style={{
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+        }}
       >
-        <MaterialIcons name="add" size={30} color="#fff" />
+        <MaterialIcons name="add" size={28} color="#fff" />
       </Pressable>
 
+      {/* Task List */}
       <ScrollView
-        className="flex-1 w-full px-5 pt-4 pb-28"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        className="flex-1 w-full"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       >
         {filteredTasks.length === 0 && (
-          <View className="py-24 items-center justify-center">
-            <Text className="text-gray-500 text-xl font-medium">
-              No maintenance tasks found.
+          <View className="py-32 items-center justify-center px-8">
+            <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
+              <MaterialIcons name="build" size={32} color="#9ca3af" />
+            </View>
+            <Text className="text-gray-900 text-xl font-semibold text-center">
+              No maintenance tasks
             </Text>
-            <Text className="text-gray-400 mt-2 text-center">
-              Add your first maintenance task to keep track of your vehicle's
-              health.
+            <Text className="text-gray-500 mt-2 text-center text-sm">
+              Keep your vehicle in top shape by scheduling regular maintenance
             </Text>
           </View>
         )}
 
-        {filteredTasks.map((task) => (
-          <View
-            key={task.id}
-            className={`mb-5 rounded-xl bg-white shadow-md p-5 border ${getTaskStatusStyle(
-              task
-            )}`}
-          >
-            <View className="flex-row justify-between items-start mb-2">
-              <Text className="text-xl font-semibold text-gray-800 flex-1 mr-2">
-                {task.title}
-              </Text>
-              <View
-                className={`px-2 py-1 rounded-full ${
-                  task.completed
-                    ? "bg-green-500"
-                    : task.dueDate && new Date(task.dueDate) < new Date()
-                    ? "bg-red-500"
-                    : "bg-yellow-500"
-                }`}
-              >
-                <Text className="text-xs text-white font-medium">
-                  {getTaskStatusText(task)}
-                </Text>
+        <View className="px-6 pt-4">
+          {filteredTasks.map((task, index) => (
+            <View
+              key={task.id}
+              className={`mb-4 bg-white rounded-2xl shadow-sm border ${getTaskStatusStyle(
+                task
+              )}`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+              }}
+            >
+              {/* Card Header */}
+              <View className="p-5 pb-0">
+                <View className="flex-row items-start justify-between mb-3">
+                  <View className="flex-1 mr-3">
+                    <Text className="text-lg font-semibold text-black mb-1">
+                      {task.title}
+                    </Text>
+                    <Text className="text-gray-600 text-sm leading-5">
+                      {task.description}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <View
+                      className={`w-2 h-2 rounded-full mr-2 ${getStatusDotColor(
+                        task
+                      )}`}
+                    />
+                    <Text
+                      className={`text-xs font-medium ${
+                        task.completed
+                          ? "text-gray-500"
+                          : getTaskStatusText(task) === "Overdue"
+                          ? "text-black"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {getTaskStatusText(task)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Tags */}
+                <View className="flex-row flex-wrap -mx-1 mb-3">
+                  {task.category && (
+                    <View className="mx-1 mb-2">
+                      <View className="bg-gray-100 rounded-full px-3 py-1.5">
+                        <Text className="text-xs text-gray-700 font-medium">
+                          {task.category}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {task.difficulty && (
+                    <View className="mx-1 mb-2">
+                      <View
+                        className={`rounded-full px-3 py-1.5 ${
+                          task.difficulty === "easy"
+                            ? "bg-gray-100"
+                            : task.difficulty === "medium"
+                            ? "bg-gray-200"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        <Text className="text-xs text-gray-700 font-medium">
+                          {task.difficulty.charAt(0).toUpperCase() +
+                            task.difficulty.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {(task.dueMileage || task.dueDate) && (
+                    <View className="mx-1 mb-2">
+                      <View className="bg-black rounded-full px-3 py-1.5 flex-row items-center">
+                        <MaterialIcons name="schedule" size={10} color="#fff" />
+                        <Text className="text-xs text-white font-medium ml-1">
+                          {task.dueMileage
+                            ? `${task.dueMileage
+                                .toString()
+                                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")} mi`
+                            : new Date(task.dueDate!).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Card Actions */}
+              <View className="border-t border-gray-100 p-5 pt-4">
+                <View className="flex-row">
+                  <TouchableOpacity
+                    className="flex-1 bg-black py-3 rounded-xl"
+                    onPress={() =>
+                      router.push(
+                        `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}`
+                      )
+                    }
+                  >
+                    <Text className="text-white font-medium text-center text-sm">
+                      View Details
+                    </Text>
+                  </TouchableOpacity>
+
+                  {!task.completed && (
+                    <>
+                      <View className="w-2" />
+                      <TouchableOpacity
+                        className="flex-1 bg-gray-100 py-3 rounded-xl"
+                        onPress={() =>
+                          router.push(
+                            `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}&complete=true`
+                          )
+                        }
+                      >
+                        <Text className="text-black font-medium text-center text-sm">
+                          Mark Complete
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  <View className="w-2" />
+                  <TouchableOpacity
+                    className="bg-gray-100 px-4 py-3 rounded-xl"
+                    onPress={() => task.id && handleDelete(task.id)}
+                  >
+                    <MaterialIcons
+                      name="delete-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-
-            <Text className="text-gray-700 mb-3">{task.description}</Text>
-
-            <View className="flex-row flex-wrap mb-3">
-              {task.category && (
-                <View className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-1">
-                  <Text className="text-xs text-blue-800">{task.category}</Text>
-                </View>
-              )}
-
-              {task.difficulty && (
-                <View
-                  className={`rounded-full px-3 py-1 mr-2 mb-1 ${
-                    task.difficulty === "easy"
-                      ? "bg-green-100"
-                      : task.difficulty === "medium"
-                      ? "bg-yellow-100"
-                      : "bg-red-100"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs ${
-                      task.difficulty === "easy"
-                        ? "text-green-800"
-                        : task.difficulty === "medium"
-                        ? "text-yellow-800"
-                        : "text-red-800"
-                    }`}
-                  >
-                    {task.difficulty.charAt(0).toUpperCase() +
-                      task.difficulty.slice(1)}
-                  </Text>
-                </View>
-              )}
-
-              {task.dueMileage && (
-                <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-1">
-                  <Text className="text-xs text-gray-800">
-                    Due:{" "}
-                    {task.dueMileage
-                      .toString()
-                      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
-                    miles
-                  </Text>
-                </View>
-              )}
-
-              {task.dueDate && (
-                <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-1">
-                  <Text className="text-xs text-gray-800">
-                    Due: {new Date(task.dueDate).toLocaleDateString()}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <View className="flex-row space-x-3 mt-2">
-              <TouchableOpacity
-                className="flex-1 bg-blue-500 px-3 py-2 rounded-lg shadow-sm"
-                onPress={() =>
-                  router.push(
-                    `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}`
-                  )
-                }
-              >
-                <Text className="text-white font-medium text-center">
-                  {task.completed ? "View Details" : "Update"}
-                </Text>
-              </TouchableOpacity>
-
-              {!task.completed && (
-                <TouchableOpacity
-                  className="flex-1 bg-green-500 px-3 py-2 rounded-lg shadow-sm"
-                  onPress={() =>
-                    router.push(
-                      `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}&complete=true`
-                    )
-                  }
-                >
-                  <Text className="text-white font-medium text-center">
-                    Complete
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                className="bg-red-500 px-3 py-2 rounded-lg shadow-sm"
-                onPress={() => task.id && handleDelete(task.id)}
-              >
-                <Text className="text-white font-medium text-center">
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+          ))}
+        </View>
       </ScrollView>
     </View>
   );

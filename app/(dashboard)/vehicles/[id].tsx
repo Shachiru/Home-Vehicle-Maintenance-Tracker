@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -89,29 +91,20 @@ const VehicleFormScreen = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"], // Updated to use string array
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.6, // Reduced quality to make file smaller
+        quality: 0.6,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        // Show loading indicator
         setIsProcessingImage(true);
 
         try {
-          // Get the URI of the selected image
           const selectedAsset = result.assets[0];
-
-          // Store the local URI for processing during submission
           setLocalImageUri(selectedAsset.uri);
-
-          // Show the selected image immediately (local preview)
           setImageUrl(selectedAsset.uri);
-
-          // Reset remove flag if it was set
           setShouldRemoveImage(false);
-
           console.log("Image selected successfully:", selectedAsset.uri);
         } catch (error) {
           console.error("Error processing selected image:", error);
@@ -171,14 +164,11 @@ const VehicleFormScreen = () => {
         mileage: parseInt(mileage),
         fuelType,
         engineType: engineType.trim() || undefined,
-        // Don't include imageUrl here, it will be handled by the image processing functions
       };
 
       if (isNew) {
-        // For new vehicles, use createVehicleWithImage
         await createVehicleWithImage(vehicleData, localImageUri || undefined);
       } else {
-        // For existing vehicles, use updateVehicleWithImage
         await updateVehicleWithImage(
           id!,
           vehicleData,
@@ -187,12 +177,10 @@ const VehicleFormScreen = () => {
         );
       }
 
-      // Return to vehicles list
       router.back();
     } catch (err: any) {
       console.error("Error saving vehicle:", err);
 
-      // Provide more specific error messages
       if (err.message && err.message.includes("Image too large")) {
         Alert.alert(
           "Image Error",
@@ -212,164 +200,396 @@ const VehicleFormScreen = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Loading...</Text>
-      </View>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#374151" />
+          <Text className="text-base mt-3 text-gray-800 font-medium">
+            Loading...
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Please log in to manage vehicles</Text>
-      </View>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+        <View className="flex-1 justify-center items-center px-8">
+          <View
+            className="w-20 h-20 rounded-full bg-gray-100 items-center justify-center mb-4"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <MaterialIcons name="lock-outline" size={32} color="#9CA3AF" />
+          </View>
+          <Text className="text-xl font-bold text-gray-900 mb-2 text-center">
+            Authentication Required
+          </Text>
+          <Text className="text-base text-gray-600 text-center leading-relaxed">
+            Please log in to manage your vehicles
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView className="flex-1 w-full p-5">
-      <View className="flex-row items-center mb-4">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="mr-4"
-          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text className="text-2xl font-bold">
-          {isNew ? "Add Vehicle" : "Edit Vehicle"}
-        </Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
 
-      {/* Image Section */}
-      <View className="mb-6 items-center">
-        <Text className="text-gray-700 mb-2 self-start">Vehicle Image</Text>
-
-        {imageUrl ? (
-          <View className="relative">
-            <Image
-              source={{ uri: imageUrl }}
-              className="w-full h-48 rounded-lg"
-              resizeMode="cover"
-            />
-
-            <TouchableOpacity
-              onPress={handleRemoveImage}
-              className="absolute top-2 right-2 bg-red-500 rounded-full p-2"
-            >
-              <MaterialIcons name="close" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            onPress={handleImagePick}
-            className="w-full h-48 bg-gray-200 rounded-lg items-center justify-center border-2 border-dashed border-gray-400"
-          >
-            <MaterialIcons name="add-a-photo" size={40} color="#9CA3AF" />
-            <Text className="text-gray-500 mt-2">Add Vehicle Image</Text>
-          </TouchableOpacity>
-        )}
-
-        {imageUrl && (
-          <TouchableOpacity
-            onPress={handleImagePick}
-            className="mt-2 flex-row items-center"
-          >
-            <MaterialIcons name="edit" size={18} color="#3B82F6" />
-            <Text className="text-blue-500 ml-1">Change Image</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <Text className="text-gray-700 mb-1">Make*</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="e.g. Toyota"
-        value={make}
-        onChangeText={setMake}
-      />
-
-      <Text className="text-gray-700 mb-1">Model*</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="e.g. Camry"
-        value={model}
-        onChangeText={setModel}
-      />
-
-      <Text className="text-gray-700 mb-1">Year*</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="e.g. 2022"
-        value={year}
-        onChangeText={setYear}
-        keyboardType="numeric"
-      />
-
-      <Text className="text-gray-700 mb-1">Current Mileage*</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="e.g. 15000"
-        value={mileage}
-        onChangeText={setMileage}
-        keyboardType="numeric"
-      />
-
-      <Text className="text-gray-700 mb-1">VIN (Optional)</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="Vehicle Identification Number"
-        value={vin}
-        onChangeText={setVin}
-      />
-
-      <Text className="text-gray-700 mb-1">License Plate (Optional)</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="License Plate Number"
-        value={licensePlate}
-        onChangeText={setLicensePlate}
-      />
-
-      <Text className="text-gray-700 mb-1">Fuel Type</Text>
-      <View className="border border-gray-400 rounded-md mb-3">
-        <Picker
-          selectedValue={fuelType}
-          onValueChange={(itemValue: string) => setFuelType(itemValue)}
-        >
-          {fuelTypes.map((type) => (
-            <Picker.Item key={type} label={type} value={type} />
-          ))}
-        </Picker>
-      </View>
-
-      <Text className="text-gray-700 mb-1">Engine Type (Optional)</Text>
-      <TextInput
-        className="border border-gray-400 p-2 mb-3 rounded-md"
-        placeholder="e.g. V6, Inline-4"
-        value={engineType}
-        onChangeText={setEngineType}
-      />
-
-      <TouchableOpacity
-        className="bg-blue-500 rounded-md px-6 py-3 my-4"
-        onPress={handleSubmit}
-        disabled={isProcessingImage || isSaving}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
       >
-        {isProcessingImage || isSaving ? (
-          <View className="flex-row justify-center items-center">
-            <ActivityIndicator size="small" color="white" />
-            <Text className="text-xl text-white text-center ml-2">
-              {isProcessingImage ? "Processing Image..." : "Saving..."}
-            </Text>
-          </View>
-        ) : (
-          <Text className="text-xl text-white text-center">
-            {isNew ? "Add Vehicle" : "Update Vehicle"}
+        {/* Image Section */}
+        <View className="px-6 pt-6">
+          <Text className="text-lg font-bold text-gray-900 mb-4">
+            Vehicle Photo
           </Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+
+          {imageUrl ? (
+            <View
+              className="relative mb-6"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: {
+                  width: 0,
+                  height: 4,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              <Image
+                source={{ uri: imageUrl }}
+                className="w-full h-48 rounded-2xl bg-gray-100"
+                resizeMode="cover"
+              />
+
+              <TouchableOpacity
+                onPress={handleRemoveImage}
+                className="absolute top-3 right-3 w-8 h-8 bg-gray-900/90 rounded-full justify-center items-center"
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="close" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleImagePick}
+                className="absolute bottom-3 right-3 px-3 py-2 bg-gray-900/90 rounded-xl flex-row items-center"
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="edit" size={14} color="#FFFFFF" />
+                <Text className="text-white text-sm font-medium ml-2">
+                  Edit
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={handleImagePick}
+              className="w-full h-48 bg-white rounded-2xl border-2 border-dashed border-gray-300 justify-center items-center mb-6"
+              activeOpacity={0.7}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <MaterialIcons name="add-a-photo" size={32} color="#9CA3AF" />
+              <Text className="text-gray-700 text-base font-semibold mt-3">
+                Add Vehicle Photo
+              </Text>
+              <Text className="text-gray-500 text-sm mt-1">
+                Tap to select from gallery
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Form Fields */}
+        <View className="px-6">
+          {/* Essential Information */}
+          <View className="mb-8">
+            <Text className="text-lg font-bold text-gray-900 mb-5">
+              Essential Information
+            </Text>
+
+            {/* Make and Model Row */}
+            <View className="flex-row mb-5">
+              <View className="flex-1 mr-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-2">
+                  Make *
+                </Text>
+                <TextInput
+                  className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                  placeholder="Toyota"
+                  placeholderTextColor="#9CA3AF"
+                  value={make}
+                  onChangeText={setMake}
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: {
+                      width: 0,
+                      height: 1,
+                    },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                />
+              </View>
+
+              <View className="flex-1 ml-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-2">
+                  Model *
+                </Text>
+                <TextInput
+                  className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                  placeholder="Camry"
+                  placeholderTextColor="#9CA3AF"
+                  value={model}
+                  onChangeText={setModel}
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: {
+                      width: 0,
+                      height: 1,
+                    },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Year and Mileage Row */}
+            <View className="flex-row mb-5">
+              <View className="flex-1 mr-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-2">
+                  Year *
+                </Text>
+                <TextInput
+                  className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                  placeholder="2024"
+                  placeholderTextColor="#9CA3AF"
+                  value={year}
+                  onChangeText={setYear}
+                  keyboardType="numeric"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: {
+                      width: 0,
+                      height: 1,
+                    },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                />
+              </View>
+
+              <View className="flex-1 ml-3">
+                <Text className="text-sm font-semibold text-gray-800 mb-2">
+                  Mileage *
+                </Text>
+                <TextInput
+                  className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                  placeholder="15,000"
+                  placeholderTextColor="#9CA3AF"
+                  value={mileage}
+                  onChangeText={setMileage}
+                  keyboardType="numeric"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: {
+                      width: 0,
+                      height: 1,
+                    },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Fuel Type */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-gray-800 mb-2">
+                Fuel Type
+              </Text>
+              <View
+                className="border border-gray-200 rounded-xl bg-white overflow-hidden"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 1,
+                  },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Picker
+                  selectedValue={fuelType}
+                  onValueChange={(itemValue: string) => setFuelType(itemValue)}
+                  style={{ height: 56 }}
+                >
+                  {fuelTypes.map((type) => (
+                    <Picker.Item key={type} label={type} value={type} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </View>
+
+          {/* Additional Information */}
+          <View className="mb-8">
+            <Text className="text-lg font-bold text-gray-900 mb-5">
+              Additional Information
+            </Text>
+
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-gray-800 mb-2">
+                VIN
+              </Text>
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                placeholder="Vehicle Identification Number"
+                placeholderTextColor="#9CA3AF"
+                value={vin}
+                onChangeText={setVin}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 1,
+                  },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-gray-800 mb-2">
+                License Plate
+              </Text>
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                placeholder="ABC-1234"
+                placeholderTextColor="#9CA3AF"
+                value={licensePlate}
+                onChangeText={setLicensePlate}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 1,
+                  },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-gray-800 mb-2">
+                Engine Type
+              </Text>
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-4 text-base text-gray-900 bg-white"
+                placeholder="V6, Inline-4, Electric Motor"
+                placeholderTextColor="#9CA3AF"
+                value={engineType}
+                onChangeText={setEngineType}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 1,
+                  },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Fixed Bottom Button */}
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-white px-6 py-6 border-t border-gray-200"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          elevation: 8,
+        }}
+      >
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={isProcessingImage || isSaving}
+          className={`${
+            isProcessingImage || isSaving ? "bg-gray-400" : "bg-gray-900"
+          } rounded-2xl py-4 items-center justify-center`}
+          activeOpacity={0.8}
+          style={{
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: isProcessingImage || isSaving ? 0 : 0.1,
+            shadowRadius: 4,
+            elevation: isProcessingImage || isSaving ? 0 : 4,
+          }}
+        >
+          {isProcessingImage || isSaving ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text className="text-base font-semibold text-white ml-3">
+                {isProcessingImage
+                  ? "Processing Image..."
+                  : "Saving Vehicle..."}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-base font-bold text-white tracking-wide">
+              {isNew ? "ADD VEHICLE" : "UPDATE VEHICLE"}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 

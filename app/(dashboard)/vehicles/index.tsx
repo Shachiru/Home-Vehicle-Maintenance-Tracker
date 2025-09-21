@@ -17,10 +17,152 @@ import {
   Text,
   TouchableOpacity,
   View,
-  SafeAreaView,
   StatusBar,
   RefreshControl,
+  Pressable,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const VehicleCard = React.memo(
+  ({
+    vehicle,
+    onEdit,
+    onDelete,
+    onMaintenance,
+  }: {
+    vehicle: Vehicle;
+    onEdit: () => void;
+    onDelete: () => void;
+    onMaintenance: () => void;
+  }) => {
+    const formatMileage = (mileage: number) => {
+      return mileage.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+
+    return (
+      <View className="mb-4">
+        <View
+          className="bg-white rounded-3xl overflow-hidden"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 3,
+          }}
+        >
+          {/* Main Card Content */}
+          <View className="p-5">
+            <View className="flex-row items-center">
+              {/* Vehicle Image */}
+              <View className="w-16 h-16 rounded-2xl bg-gray-50 justify-center items-center mr-4 overflow-hidden">
+                {vehicle.imageUrl ? (
+                  <Image
+                    source={{ uri: vehicle.imageUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="directions-car"
+                    size={28}
+                    color="#000000"
+                  />
+                )}
+              </View>
+
+              {/* Vehicle Info */}
+              <View className="flex-1">
+                <View className="flex-row justify-between items-start">
+                  <View>
+                    <Text className="text-xs font-medium text-gray-500 mb-0.5">
+                      {vehicle.year}
+                    </Text>
+                    <Text className="text-lg font-bold text-black">
+                      {vehicle.make} {vehicle.model}
+                    </Text>
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View className="flex-row items-center">
+                    <TouchableOpacity
+                      onPress={onEdit}
+                      className="p-2 rounded-full bg-gray-50 mr-2"
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="edit" size={16} color="#000000" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={onDelete}
+                      className="p-2 rounded-full bg-gray-50"
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="delete" size={16} color="#000000" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Vehicle Details Row */}
+                <View className="flex-row items-center mt-2">
+                  {vehicle.licensePlate && (
+                    <View className="bg-black px-2.5 py-1 rounded-lg mr-2">
+                      <Text className="text-white text-xs font-semibold tracking-wide">
+                        {vehicle.licensePlate}
+                      </Text>
+                    </View>
+                  )}
+
+                  <Text className="text-sm font-medium text-gray-900">
+                    {formatMileage(vehicle.mileage)} mi
+                  </Text>
+
+                  {vehicle.fuelType && (
+                    <>
+                      <Text className="text-gray-300 mx-2">•</Text>
+                      <Text className="text-sm text-gray-600 capitalize">
+                        {vehicle.fuelType}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Maintenance Button */}
+            <TouchableOpacity
+              className="bg-gray-50 mt-4 py-3 rounded-2xl flex-row items-center justify-center"
+              onPress={onMaintenance}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="build" size={16} color="#000000" />
+              <Text className="text-black font-medium ml-2 text-sm">
+                Maintenance Records
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+);
+
+const EmptyState = React.memo(() => {
+  return (
+    <View className="py-24 items-center justify-center">
+      <View className="w-24 h-24 rounded-full bg-gray-50 items-center justify-center mb-6">
+        <MaterialIcons name="directions-car" size={40} color="#000000" />
+      </View>
+      <Text className="text-black text-lg font-bold mb-2">No vehicles yet</Text>
+      <Text className="text-gray-600 text-sm text-center px-8">
+        Add your first vehicle to start tracking maintenance
+      </Text>
+    </View>
+  );
+});
 
 const VehicleScreen = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -113,167 +255,106 @@ const VehicleScreen = () => {
     router.push(`/vehicles/maintenance/${vehicleId}`);
   };
 
-  const formatMileage = (mileage: number) => {
-    return mileage.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Loading...</Text>
-      </View>
+      <SafeAreaView
+        className="flex-1 justify-center items-center bg-gray-50"
+        edges={["top", "left", "right"]}
+      >
+        <Text className="text-base font-medium text-black">Loading...</Text>
+      </SafeAreaView>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-lg">Please log in to view your vehicles</Text>
-      </View>
+      <SafeAreaView
+        className="flex-1 justify-center items-center bg-gray-50 px-8"
+        edges={["top", "left", "right"]}
+      >
+        <Text className="text-lg font-semibold text-black text-center">
+          Please log in to view your vehicles
+        </Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
-      <StatusBar barStyle="dark-content" backgroundColor="#F3F4F6" />
-
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="mr-3 p-1"
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          >
-            <MaterialIcons name="arrow-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <Text className="text-2xl font-bold text-gray-900">My Vehicles</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push("../vehicles/new")}
-          className="w-10 h-10 justify-center items-center"
-        >
-          <MaterialIcons name="add" size={28} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Vehicle List */}
-      <ScrollView
-        className="flex-1 px-4 py-4"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#3B82F6"]}
-            tintColor="#3B82F6"
-          />
-        }
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <SafeAreaView
+        style={{ flex: 0, backgroundColor: "white" }}
+        edges={["top"]}
+      />
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "#F9FAFB" }}
+        edges={["left", "right", "bottom"]}
       >
-        {vehicles.length === 0 && (
-          <View className="py-24 items-center justify-center">
-            <MaterialIcons name="directions-car" size={64} color="#CBD5E1" />
-            <Text className="text-gray-500 text-base font-medium mt-4">
-              No vehicles found. Add your first vehicle!
-            </Text>
-          </View>
-        )}
-
-        {vehicles.map((vehicle) => (
-          <View
-            key={vehicle.id}
-            className="mb-5 rounded-xl bg-white shadow-md overflow-hidden"
-          >
-            <View className="flex-row">
-              {/* Vehicle Image */}
-              <View className="w-28 h-28 bg-gray-100 justify-center items-center">
-                {vehicle.imageUrl ? (
-                  <Image
-                    source={{ uri: vehicle.imageUrl }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <MaterialIcons
-                    name="directions-car"
-                    size={44}
-                    color="#9CA3AF"
-                  />
-                )}
-              </View>
-
-              {/* Vehicle Details */}
-              <View className="flex-1 p-4">
-                <View className="flex-row justify-between items-start">
-                  <View>
-                    <Text className="text-gray-600 text-sm">
-                      {vehicle.year}
-                    </Text>
-                    <Text className="text-xl font-bold text-gray-900">
-                      {vehicle.make} {vehicle.model}
-                    </Text>
-                  </View>
-                </View>
-
-                {vehicle.licensePlate && (
-                  <Text className="text-gray-500 mt-1">
-                    License Plate: {vehicle.licensePlate}
-                  </Text>
-                )}
-
-                <View className="flex-row flex-wrap mt-1">
-                  <Text className="text-gray-500">
-                    {formatMileage(vehicle.mileage)} miles
-                  </Text>
-
-                  {vehicle.fuelType && (
-                    <Text className="text-gray-500 ml-2">
-                      • {vehicle.fuelType}
-                    </Text>
-                  )}
-
-                  {vehicle.engineType && (
-                    <Text className="text-gray-500 ml-2">
-                      • {vehicle.engineType}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View className="flex-row items-center border-t border-gray-100">
+        {/* Header */}
+        <View className="bg-white px-5 py-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1">
               <TouchableOpacity
-                className="flex-1 py-3 px-4 flex-row items-center justify-center bg-gray-900"
-                onPress={() => navigateToMaintenance(vehicle.id)}
+                onPress={() => router.back()}
+                className="mr-3 p-2"
+                activeOpacity={0.7}
               >
-                <Text className="text-white font-medium mr-1">
-                  Vehicle Maintenance
+                <MaterialIcons name="arrow-back" size={24} color="#000000" />
+              </TouchableOpacity>
+              <View>
+                <Text className="text-xl font-bold text-black">
+                  My Vehicles
                 </Text>
-                <MaterialIcons name="arrow-forward" size={16} color="white" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="py-3 px-4 border-l border-gray-100"
-                onPress={() => router.push(`../vehicles/${vehicle.id}`)}
-              >
-                <MaterialIcons name="edit" size={20} color="#4B5563" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="py-3 px-4 border-l border-gray-100"
-                onPress={() => vehicle.id && handleDelete(vehicle.id)}
-              >
-                <MaterialIcons name="delete" size={20} color="#EF4444" />
-              </TouchableOpacity>
+                <Text className="text-xs text-gray-500 mt-0.5">
+                  {vehicles.length}{" "}
+                  {vehicles.length === 1 ? "vehicle" : "vehicles"}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
 
-        {/* Space at bottom to ensure last card isn't covered by bottom tab */}
-        <View className="h-20" />
-      </ScrollView>
-    </SafeAreaView>
+            <TouchableOpacity
+              onPress={() => router.push("../vehicles/new")}
+              className="w-10 h-10 bg-black rounded-full justify-center items-center"
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="add" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Vehicle List */}
+        <ScrollView
+          className="flex-1 px-5 py-4"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#000000"]}
+              tintColor="#000000"
+              progressBackgroundColor="#FAFAFA"
+            />
+          }
+        >
+          {vehicles.length === 0 ? (
+            <EmptyState />
+          ) : (
+            vehicles.map((vehicle) => (
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                onEdit={() => router.push(`../vehicles/${vehicle.id}`)}
+                onDelete={() => vehicle.id && handleDelete(vehicle.id)}
+                onMaintenance={() => navigateToMaintenance(vehicle.id)}
+              />
+            ))
+          )}
+
+          {/* Bottom spacing */}
+          <View className="h-4" />
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 
