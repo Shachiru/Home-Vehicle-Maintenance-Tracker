@@ -13,6 +13,8 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
+import * as FileSystem from "expo-file-system";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 const removeUndefinedFields = (obj: any) => {
   const result = { ...obj };
@@ -49,6 +51,58 @@ const getVehicleMaintenanceCollection = (vehicleId: string) => {
     vehicleId,
     "maintenanceTasks"
   );
+};
+
+export const processImageForUpload = async (uri: string): Promise<string> => {
+  try {
+    const manipulatedImage = await manipulateAsync(
+      uri,
+      [{ resize: { width: 800, height: 600 } }],
+      { compress: 0.7, format: SaveFormat.JPEG }
+    );
+
+    const base64Image = await FileSystem.readAsStringAsync(
+      manipulatedImage.uri,
+      {
+        encoding: "base64",
+      }
+    );
+
+    return `data:image/jpeg;base64,${base64Image}`;
+  } catch (error) {
+    console.error("Error processing image:", error);
+    throw new Error("Failed to process image for upload");
+  }
+};
+
+export const createVehicleWithImage = async (
+  vehicle: Omit<Vehicle, "id">,
+  localImageUri?: string
+) => {
+  const user = getCurrentUser();
+  let vehicleData = { ...vehicle };
+
+  if (localImageUri) {
+    try {
+      const base64Image = await processImageForUpload(localImageUri);
+      vehicleData.imageUrl = base64Image;
+    } catch (error) {
+      console.error("Image processing error:", error);
+    }
+  }
+
+  const cleanData = removeUndefinedFields(vehicleData);
+
+  const vehiclesCollection = getUserVehiclesCollection();
+  const docRef = await addDoc(vehiclesCollection, {
+    ...cleanData,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: user.uid,
+  });
+
+  console.log("Vehicle created with ID:", docRef.id);
+  return docRef;
 };
 
 export const createVehicle = async (vehicle: Omit<Vehicle, "id">) => {
@@ -111,6 +165,35 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
     return { id: snapshot.id, ...snapshot.data() } as Vehicle;
   }
   return null;
+};
+
+export const updateVehicleWithImage = async (
+  id: string,
+  updates: Partial<Vehicle>,
+  localImageUri?: string,
+  shouldRemoveImage?: boolean
+) => {
+  const user = getCurrentUser();
+  let updateData = { ...updates };
+
+  if (shouldRemoveImage) {
+    updateData.imageUrl = undefined;
+  } else if (localImageUri) {
+    try {
+      const base64Image = await processImageForUpload(localImageUri);
+      updateData.imageUrl = base64Image;
+    } catch (error) {
+      console.error("Image processing error:", error);
+    }
+  }
+
+  const cleanUpdates = removeUndefinedFields(updateData);
+
+  const vehicleDoc = doc(db, "users", user.uid, "vehicles", id);
+  return await updateDoc(vehicleDoc, {
+    ...cleanUpdates,
+    updatedAt: new Date(),
+  });
 };
 
 export const updateVehicle = async (id: string, updates: Partial<Vehicle>) => {
@@ -205,12 +288,10 @@ export const getUpcomingMaintenanceTasks = async (
   const currentDate = new Date();
 
   return tasks.filter((task) => {
-    // Due by date
     if (task.dueDate && new Date(task.dueDate) <= currentDate) {
       return true;
     }
 
-    // Due by mileage
     if (task.dueMileage && vehicle.mileage >= task.dueMileage) {
       return true;
     }
