@@ -20,7 +20,7 @@ const DashboardLayout = () => {
     return (
       <View
         className={`flex-1 justify-center items-center ${
-          isDark ? "bg-gray-900" : "bg-white"
+          isDark ? "bg-gray-900" : "bg-gray-50"
         }`}
       >
         <ActivityIndicator
@@ -40,7 +40,7 @@ const DashboardLayout = () => {
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: isDark ? "#111827" : "#ffffff",
+          backgroundColor: isDark ? "#111827" : "#f9fafb",
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -62,7 +62,7 @@ const DashboardLayout = () => {
   }
 
   return (
-    <SafeAreaView className={`flex-1 ${isDark ? "bg-gray-900" : "bg-white"}`}>
+    <SafeAreaView className={`flex-1 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -72,13 +72,23 @@ const DashboardLayout = () => {
             backgroundColor: isDark ? "#1f2937" : "#ffffff",
             borderTopColor: isDark ? "#374151" : "#e5e7eb",
             borderTopWidth: 1,
-            elevation: 0,
-            shadowOpacity: 0.1,
+            elevation: 8,
+            shadowColor: "#000000",
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: isDark ? 0.25 : 0.1,
+            shadowRadius: 8,
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 80,
           },
           tabBarLabelStyle: {
             fontSize: 12,
-            fontWeight: "500",
+            fontWeight: "600",
             marginBottom: 4,
+            marginTop: 4,
+          },
+          tabBarIconStyle: {
+            marginBottom: 2,
           },
         }}
       >
@@ -86,11 +96,11 @@ const DashboardLayout = () => {
           name="home"
           options={{
             title: "Home",
-            tabBarIcon: (data) => (
+            tabBarIcon: ({ focused, color, size }) => (
               <MaterialIcons
-                name="home-filled"
-                size={data.size}
-                color={data.color}
+                name={focused ? "home" : "home-filled"}
+                size={size + 2}
+                color={color}
               />
             ),
           }}
@@ -99,11 +109,11 @@ const DashboardLayout = () => {
           name="vehicles"
           options={{
             title: "Vehicles",
-            tabBarIcon: (data) => (
+            tabBarIcon: ({ focused, color, size }) => (
               <MaterialIcons
                 name="directions-car"
-                size={data.size}
-                color={data.color}
+                size={size + 2}
+                color={color}
               />
             ),
           }}
@@ -112,11 +122,11 @@ const DashboardLayout = () => {
           name="profile"
           options={{
             title: "Profile",
-            tabBarIcon: (data) => (
+            tabBarIcon: ({ focused, color, size }) => (
               <MaterialIcons
-                name="person"
-                size={data.size}
-                color={data.color}
+                name={focused ? "person" : "person-outline"}
+                size={size + 2}
+                color={color}
               />
             ),
           }}
@@ -124,12 +134,12 @@ const DashboardLayout = () => {
         <Tabs.Screen
           name="setting"
           options={{
-            title: "Setting",
-            tabBarIcon: (data) => (
+            title: "Settings",
+            tabBarIcon: ({ focused, color, size }) => (
               <MaterialIcons
-                name="settings"
-                size={data.size}
-                color={data.color}
+                name={focused ? "settings" : "settings"}
+                size={size + 2}
+                color={color}
               />
             ),
           }}
