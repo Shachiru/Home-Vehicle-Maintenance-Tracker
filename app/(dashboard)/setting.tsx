@@ -5,20 +5,19 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// Remove expo-application import and use a static version string instead
-// import * as Application from "expo-application";
-import { signout } from "@/services/authService"; // Import the signout function directly
+import { signout } from "@/services/authService";
 
 const SettingScreen = () => {
-  const { user } = useAuth(); // Remove signOut from here
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const { theme, isDark, toggleTheme, isLoading: themeLoading } = useTheme();
   const router = useRouter();
 
   // App preferences
@@ -27,7 +26,7 @@ const SettingScreen = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [maintenanceReminders, setMaintenanceReminders] = useState(true);
 
-  // Static app version info (alternative to using expo-application)
+  // Static app version info
   const appVersion = "1.0.0";
   const buildVersion = "1";
 
@@ -68,6 +67,18 @@ const SettingScreen = () => {
     }
   };
 
+  // Handle theme toggle with proper error handling and debouncing
+  const handleThemeToggle = useCallback(async () => {
+    if (themeLoading) return; // Prevent toggle during loading
+
+    try {
+      toggleTheme();
+    } catch (error) {
+      console.error("Error toggling theme:", error);
+      Alert.alert("Error", "Failed to switch theme. Please try again.");
+    }
+  }, [toggleTheme, themeLoading]);
+
   // Toggle handlers with AsyncStorage persistence
   const toggleMeasurementUnit = () => {
     const newValue = measurementUnit === "miles" ? "kilometers" : "miles";
@@ -105,7 +116,7 @@ const SettingScreen = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            await signout(); // Use the imported signout function directly
+            await signout();
             router.replace("/signin");
           } catch (error) {
             console.error("Logout error:", error);
@@ -156,6 +167,34 @@ const SettingScreen = () => {
     );
   };
 
+  // Show loading overlay during theme switching to prevent navigation errors
+  if (themeLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: isDark ? "#111827" : "#f9fafb",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#60a5fa" : "#3b82f6"}
+        />
+        <Text
+          style={{
+            marginTop: 16,
+            color: isDark ? "#d1d5db" : "#6b7280",
+            fontSize: 16,
+          }}
+        >
+          Switching theme...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View className={`flex-1 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Header */}
@@ -182,7 +221,8 @@ const SettingScreen = () => {
           >
             <TouchableOpacity
               className="flex-row justify-between items-center p-3"
-              onPress={toggleTheme}
+              onPress={handleThemeToggle}
+              disabled={themeLoading}
             >
               <View className="flex-row items-center">
                 <MaterialIcons
@@ -210,9 +250,10 @@ const SettingScreen = () => {
               </View>
               <Switch
                 value={isDark}
-                onValueChange={toggleTheme}
+                onValueChange={handleThemeToggle}
                 trackColor={{ false: "#d1d5db", true: "#3b82f6" }}
                 thumbColor={isDark ? "#eff6ff" : "#f3f4f6"}
+                disabled={themeLoading}
               />
             </TouchableOpacity>
 
@@ -397,7 +438,9 @@ const SettingScreen = () => {
             }`}
           >
             <TouchableOpacity
-              className="flex-row justify-between items-center p-4 border-b border-gray-100"
+              className={`flex-row justify-between items-center p-4 border-b ${
+                isDark ? "border-gray-700" : "border-gray-100"
+              }`}
               onPress={handleExportData}
             >
               <View className="flex-row items-center">
@@ -469,7 +512,9 @@ const SettingScreen = () => {
             </View>
 
             <TouchableOpacity
-              className="flex-row justify-between items-center p-3 border-t border-gray-100"
+              className={`flex-row justify-between items-center p-3 border-t ${
+                isDark ? "border-gray-700" : "border-gray-100"
+              }`}
               onPress={() =>
                 Alert.alert(
                   "Privacy Policy",
@@ -484,7 +529,9 @@ const SettingScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="flex-row justify-between items-center p-3 border-t border-gray-100"
+              className={`flex-row justify-between items-center p-3 border-t ${
+                isDark ? "border-gray-700" : "border-gray-100"
+              }`}
               onPress={() =>
                 Alert.alert(
                   "Terms of Service",
@@ -535,7 +582,9 @@ const SettingScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="flex-row items-center p-4 border-t border-gray-100"
+              className={`flex-row items-center p-4 border-t ${
+                isDark ? "border-gray-700" : "border-gray-100"
+              }`}
               onPress={handleLogout}
             >
               <MaterialIcons

@@ -13,16 +13,16 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
-import { auth, storage, db } from "@/firebase";
+import { auth, db } from "@/firebase";
 import {
   updateProfile,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
 } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const ProfileScreen = () => {
@@ -46,6 +46,7 @@ const ProfileScreen = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // User stats
   const [userStats, setUserStats] = useState({
@@ -69,7 +70,9 @@ const ProfileScreen = () => {
           setDisplayName(user.displayName || userData.displayName || "");
           setPhoneNumber(userData.phoneNumber || "");
           setEmail(user.email || "");
-          setProfileImage(user.photoURL || userData.photoURL || null);
+
+          // Load profile image from Firestore (base64 string)
+          setProfileImage(userData.profileImageBase64 || user.photoURL || null);
 
           // Set user stats
           setUserStats({
@@ -81,11 +84,18 @@ const ProfileScreen = () => {
           });
         } else {
           // Create user document if it doesn't exist
-          await updateDoc(userDocRef, {
+          const newUserProfile = {
+            uid: user.uid,
             displayName: user.displayName || "",
             email: user.email || "",
+            phoneNumber: "",
+            profileImageBase64: null,
             createdAt: new Date(),
-          });
+            vehiclesCount: 0,
+            maintenanceTasksCount: 0,
+          };
+
+          await setDoc(userDocRef, newUserProfile);
 
           setDisplayName(user.displayName || "");
           setEmail(user.email || "");
@@ -107,6 +117,7 @@ const ProfileScreen = () => {
 
   const pickImage = async () => {
     try {
+      // Request permission first
       const permissionResult =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -119,37 +130,103 @@ const ProfileScreen = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"], // Fixed: Use array format instead of MediaType
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,
+        base64: true, // Get base64 directly from ImagePicker
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedImage = result.assets[0];
-        setProfileImage(selectedImage.uri);
+
+        // Check if we have base64 data
+        if (selectedImage.base64) {
+          await processImageBase64(selectedImage.base64);
+        } else {
+          // Fallback: process the URI
+          await processImageFromUri(selectedImage.uri);
+        }
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to select image");
+      Alert.alert("Error", "Failed to select image. Please try again.");
     }
   };
 
-  const uploadProfileImage = async (uri: string): Promise<string> => {
-    if (!user) throw new Error("User not authenticated");
+  const processImageBase64 = async (base64: string) => {
+    try {
+      setIsUploadingImage(true);
 
-    // Convert image URI to blob
-    const response = await fetch(uri);
-    const blob = await response.blob();
+      // Create data URI
+      const dataUri = `data:image/jpeg;base64,${base64}`;
 
-    // Create a reference to the storage location
-    const storageRef = ref(storage, `profileImages/${user.uid}`);
+      // Check if the base64 string is too large (Firestore has 1MB limit per field)
+      const sizeInMB = (base64.length * 3) / 4 / (1024 * 1024);
+      console.log("Image size:", `${sizeInMB.toFixed(2)}MB`);
 
-    // Upload the file
-    await uploadBytes(storageRef, blob);
+      if (sizeInMB > 0.9) {
+        // Keep it under 0.9MB to be safe
+        Alert.alert(
+          "Image Too Large",
+          "Please select a smaller image. The image should be under 1MB."
+        );
+        return;
+      }
 
-    // Get the download URL
-    return await getDownloadURL(storageRef);
+      setProfileImage(dataUri);
+      console.log("Image processed successfully");
+    } catch (error) {
+      console.error("Error processing base64 image:", error);
+      Alert.alert("Error", "Failed to process image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const processImageFromUri = async (uri: string) => {
+    try {
+      setIsUploadingImage(true);
+
+      // Use expo-image-manipulator to resize and get base64
+      const manipulatorResult = await manipulateAsync(
+        uri,
+        [
+          { resize: { width: 300, height: 300 } }, // Resize to reduce file size
+        ],
+        {
+          compress: 0.7,
+          format: SaveFormat.JPEG,
+          base64: true,
+        }
+      );
+
+      if (manipulatorResult.base64) {
+        // Create data URI
+        const dataUri = `data:image/jpeg;base64,${manipulatorResult.base64}`;
+
+        // Check size
+        const sizeInMB =
+          (manipulatorResult.base64.length * 3) / 4 / (1024 * 1024);
+        console.log("Processed image size:", `${sizeInMB.toFixed(2)}MB`);
+
+        if (sizeInMB > 0.9) {
+          Alert.alert(
+            "Image Too Large",
+            "The processed image is still too large. Please try a different image."
+          );
+          return;
+        }
+
+        setProfileImage(dataUri);
+        console.log("Image processed from URI successfully");
+      }
+    } catch (error) {
+      console.error("Error processing image from URI:", error);
+      Alert.alert("Error", "Failed to process image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -159,38 +236,53 @@ const ProfileScreen = () => {
       setIsSaving(true);
       showLoader();
 
-      let photoURL = user.photoURL;
-
-      // Upload new profile image if it has changed
-      if (profileImage && (!user.photoURL || profileImage !== user.photoURL)) {
-        photoURL = await uploadProfileImage(profileImage);
-      }
-
-      // Update authentication profile
-      await updateProfile(auth.currentUser!, {
+      // Prepare the update data
+      const updateData: any = {
         displayName,
-        photoURL,
-      });
+        phoneNumber,
+        updatedAt: new Date(),
+      };
+
+      // Add profile image to update data if it exists and is a base64 string
+      if (profileImage && profileImage.startsWith("data:image/")) {
+        updateData.profileImageBase64 = profileImage;
+        console.log("Saving profile image to Firestore");
+      }
 
       // Update Firestore profile
       const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
+      await updateDoc(userDocRef, updateData);
+
+      // Update authentication profile (without the base64 image)
+      await updateProfile(auth.currentUser!, {
         displayName,
-        phoneNumber,
-        photoURL,
-        updatedAt: new Date(),
+        // Don't update photoURL with base64 string, keep the original or set to null
+        photoURL: user.photoURL || null,
       });
 
-      // Force a reload of the current user
+      // Force a reload of the current user to get updated profile
       if (auth.currentUser) {
         await auth.currentUser.reload();
       }
 
       Alert.alert("Success", "Profile updated successfully");
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
+      // Fixed: Type the error parameter
       console.error("Error saving profile:", error);
-      Alert.alert("Error", "Failed to update profile");
+
+      // Provide more specific error messages
+      if (error.code === "invalid-argument") {
+        Alert.alert(
+          "Error",
+          "The image is too large. Please select a smaller image."
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to update profile. Please check your internet connection and try again."
+        );
+      }
     } finally {
       hideLoader();
       setIsSaving(false);
@@ -292,6 +384,7 @@ const ProfileScreen = () => {
                   className={`w-24 h-24 rounded-full border-4 ${
                     isDark ? "border-gray-800" : "border-white"
                   }`}
+                  style={{ resizeMode: "cover" }}
                 />
               ) : (
                 <View
@@ -313,8 +406,13 @@ const ProfileScreen = () => {
                 <TouchableOpacity
                   onPress={pickImage}
                   className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2"
+                  disabled={isUploadingImage}
                 >
-                  <MaterialIcons name="camera-alt" size={18} color="white" />
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <MaterialIcons name="camera-alt" size={18} color="white" />
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -394,7 +492,7 @@ const ProfileScreen = () => {
                   isDark ? "bg-gray-700" : "bg-gray-300"
                 }`}
                 onPress={() => setIsEditing(false)}
-                disabled={isSaving}
+                disabled={isSaving || isUploadingImage}
               >
                 <Text
                   className={`font-medium ${
@@ -408,9 +506,9 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 className="bg-blue-500 rounded-full py-2 px-4 flex-row items-center"
                 onPress={handleSaveProfile}
-                disabled={isSaving}
+                disabled={isSaving || isUploadingImage}
               >
-                {isSaving ? (
+                {isSaving || isUploadingImage ? (
                   <ActivityIndicator
                     size="small"
                     color="white"
@@ -424,7 +522,9 @@ const ProfileScreen = () => {
                     style={{ marginRight: 5 }}
                   />
                 )}
-                <Text className="text-white font-medium">Save</Text>
+                <Text className="text-white font-medium">
+                  {isUploadingImage ? "Processing..." : "Save"}
+                </Text>
               </TouchableOpacity>
             </View>
           )}

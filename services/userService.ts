@@ -9,6 +9,7 @@ export interface UserProfile {
   displayName?: string;
   phoneNumber?: string;
   photoURL?: string;
+  profileImageBase64?: string; // Add this field
   createdAt: Date;
   updatedAt?: Date;
   vehiclesCount?: number;
@@ -32,6 +33,7 @@ export const createUserProfile = async (user: User): Promise<UserProfile> => {
       displayName: user.displayName || "",
       photoURL: user.photoURL || "",
       phoneNumber: user.phoneNumber || "",
+      profileImageBase64: "",
       createdAt: new Date(),
       vehiclesCount: 0,
       maintenanceTasksCount: 0,

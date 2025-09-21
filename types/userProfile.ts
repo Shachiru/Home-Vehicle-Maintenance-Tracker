@@ -4,6 +4,7 @@ export interface UserProfile {
   displayName?: string;
   phoneNumber?: string;
   photoURL?: string;
+  profileImageBase64?: string;
   createdAt: any;
   updatedAt?: any;
   vehiclesCount: number;
