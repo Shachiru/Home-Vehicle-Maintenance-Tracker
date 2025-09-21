@@ -115,7 +115,7 @@ const SignUp = () => {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-white"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -127,10 +127,10 @@ const SignUp = () => {
       >
         {/* Header Section */}
         <View className="items-center mb-8">
-          <View className="w-20 h-20 rounded-full bg-blue-500 justify-center items-center mb-4 shadow-lg">
-            <Text className="text-4xl">🚗</Text>
+          <View className="w-20 h-20 rounded-full bg-black justify-center items-center mb-4 shadow-lg">
+            <Text className="text-4xl text-white">🚗</Text>
           </View>
-          <Text className="text-3xl font-bold text-gray-800 mb-2">
+          <Text className="text-3xl font-bold text-black mb-2">
             AutoHome Care
           </Text>
           <Text className="text-base text-gray-600 text-center">
@@ -139,8 +139,8 @@ const SignUp = () => {
         </View>
 
         {/* Sign Up Form */}
-        <View className="bg-white rounded-2xl p-6 shadow-md">
-          <Text className="text-2xl font-bold text-gray-800 text-center mb-2">
+        <View className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
+          <Text className="text-2xl font-bold text-black text-center mb-2">
             Create Account
           </Text>
           <Text className="text-base text-gray-600 text-center mb-6">
@@ -149,13 +149,13 @@ const SignUp = () => {
 
           {/* Full Name Input */}
           <View className="mb-4">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
+            <Text className="text-base font-semibold text-black mb-2">
               Full Name
             </Text>
             <TextInput
-              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-gray-800"
+              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-black"
               placeholder="Enter your full name"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#666666"
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
@@ -165,13 +165,13 @@ const SignUp = () => {
 
           {/* Email Input */}
           <View className="mb-4">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
+            <Text className="text-base font-semibold text-black mb-2">
               Email
             </Text>
             <TextInput
-              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-gray-800"
+              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-black"
               placeholder="Enter your email"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#666666"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -182,13 +182,13 @@ const SignUp = () => {
 
           {/* Password Input */}
           <View className="mb-4">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
+            <Text className="text-base font-semibold text-black mb-2">
               Password
             </Text>
             <TextInput
-              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-gray-800"
+              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-black"
               placeholder="Create a password (min. 6 characters)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#666666"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -198,13 +198,13 @@ const SignUp = () => {
 
           {/* Confirm Password Input */}
           <View className="mb-5">
-            <Text className="text-base font-semibold text-gray-800 mb-2">
+            <Text className="text-base font-semibold text-black mb-2">
               Confirm Password
             </Text>
             <TextInput
-              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-gray-800"
+              className="border border-gray-200 rounded-lg p-4 text-base bg-gray-50 text-black"
               placeholder="Confirm your password"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#666666"
               value={cPassword}
               onChangeText={setCPassword}
               secureTextEntry
@@ -219,9 +219,7 @@ const SignUp = () => {
           >
             <View
               className={`w-5 h-5 rounded border-2 mr-3 mt-0.5 items-center justify-center ${
-                acceptedTerms
-                  ? "bg-blue-500 border-blue-500"
-                  : "border-gray-300"
+                acceptedTerms ? "bg-black border-black" : "border-gray-300"
               }`}
             >
               {acceptedTerms && (
@@ -232,14 +230,14 @@ const SignUp = () => {
               <Text className="text-sm text-gray-600 leading-5">
                 I agree to the{" "}
                 <Text
-                  className="text-blue-500 font-semibold"
+                  className="text-black font-semibold"
                   onPress={handleTermsPress}
                 >
                   Terms of Service
                 </Text>{" "}
                 and{" "}
                 <Text
-                  className="text-blue-500 font-semibold"
+                  className="text-black font-semibold"
                   onPress={handleTermsPress}
                 >
                   Privacy Policy
@@ -251,7 +249,7 @@ const SignUp = () => {
           {/* Sign Up Button */}
           <Pressable
             className={`${
-              isLoading ? "bg-gray-500 opacity-70" : "bg-blue-500"
+              isLoading ? "bg-gray-500 opacity-70" : "bg-black"
             } rounded-lg p-4 items-center mb-6 shadow-md`}
             onPress={handleSignUp}
             disabled={isLoading}
@@ -274,7 +272,7 @@ const SignUp = () => {
               Already have an account?{" "}
             </Text>
             <Pressable onPress={handleSignIn}>
-              <Text className="text-blue-500 text-base font-bold">Sign In</Text>
+              <Text className="text-black text-base font-bold">Sign In</Text>
             </Pressable>
           </View>
         </View>
