@@ -8,12 +8,12 @@ import {
   Animated,
   Dimensions,
   Image,
+  RefreshControl,
 } from "react-native";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "expo-router";
 import {
   getAllVehicles,
-  getVehicleMaintenanceColRef,
   getUpcomingMaintenanceTasks,
 } from "@/services/vehicleService";
 import { Vehicle } from "@/types/vehicle";
@@ -21,17 +21,18 @@ import { MaintenanceTask } from "@/types/maintenanceTask";
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
 const HomeScreen = () => {
   const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [upcomingServices, setUpcomingServices] = useState<MaintenanceTask[]>(
-    []
-  );
+  const [upcomingServices, setUpcomingServices] = useState<
+    (MaintenanceTask & { vehicleName: string })[]
+  >([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const { showLoader, hideLoader } = useLoader();
@@ -62,71 +63,98 @@ const HomeScreen = () => {
     ]).start();
   }, []);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!isAuthenticated || !user) return;
 
-    const loadData = async () => {
-      try {
-        showLoader();
-        console.log("Loading vehicles for user ID:", user.uid);
+    try {
+      showLoader();
+      console.log("Loading vehicles for user ID:", user.uid);
 
-        const vehicleData = await getAllVehicles();
-        console.log("Vehicles loaded:", vehicleData.length);
-        setVehicles(vehicleData);
+      const vehicleData = await getAllVehicles();
+      console.log("Vehicles loaded:", vehicleData.length);
+      setVehicles(vehicleData);
 
-        if (vehicleData.length > 0) {
-          let allUpcomingTasks: MaintenanceTask[] = [];
-          for (const vehicle of vehicleData) {
-            try {
-              const tasks = await getUpcomingMaintenanceTasks(vehicle.id);
-              allUpcomingTasks = [...allUpcomingTasks, ...tasks];
-            } catch (vehicleError) {
-              console.error(
-                "Error loading maintenance for vehicle",
-                vehicle.id,
-                vehicleError
-              );
-            }
+      if (vehicleData.length > 0) {
+        let allUpcomingTasks: (MaintenanceTask & { vehicleName: string })[] =
+          [];
+
+        for (const vehicle of vehicleData) {
+          try {
+            const tasks = await getUpcomingMaintenanceTasks(vehicle.id);
+            // Add vehicle name to each task
+            const tasksWithVehicle = tasks.map((task) => ({
+              ...task,
+              vehicleName: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+            }));
+            allUpcomingTasks = [...allUpcomingTasks, ...tasksWithVehicle];
+          } catch (vehicleError) {
+            console.error(
+              "Error loading maintenance for vehicle",
+              vehicle.id,
+              vehicleError
+            );
           }
-
-          allUpcomingTasks.sort((a, b) => {
-            if (a.dueDate && b.dueDate) {
-              return (
-                new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-              );
-            }
-            return 0;
-          });
-
-          setUpcomingServices(allUpcomingTasks.slice(0, 5));
         }
-      } catch (error) {
-        console.error("Error loading home data:", error);
-        Alert.alert(
-          "Data Loading Error",
-          "Could not load your vehicle data. Please ensure you're signed in properly."
-        );
-      } finally {
-        hideLoader();
-        setLoading(false);
-      }
-    };
 
-    loadData();
+        // Sort by due date first, then by due mileage
+        allUpcomingTasks.sort((a, b) => {
+          // If both have due dates, compare them
+          if (a.dueDate && b.dueDate) {
+            return (
+              new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            );
+          }
+          // If only a has due date, prioritize it
+          if (a.dueDate) return -1;
+          // If only b has due date, prioritize it
+          if (b.dueDate) return 1;
+          // If neither has due date, compare mileage
+          if (a.dueMileage && b.dueMileage) {
+            return a.dueMileage - b.dueMileage;
+          }
+          return 0;
+        });
+
+        setUpcomingServices(allUpcomingTasks.slice(0, 5));
+      }
+    } catch (error) {
+      console.error("Error loading home data:", error);
+      Alert.alert(
+        "Data Loading Error",
+        "Could not load your vehicle data. Please ensure you're signed in properly."
+      );
+    } finally {
+      hideLoader();
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [isAuthenticated, user?.uid]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
 
   const handleAddVehicle = () => {
     router.push("../vehicles");
   };
 
   const handleViewVehicle = (vehicleId: string) => {
-    router.push(`../vehicles`);
+    router.push(`/vehicles/${vehicleId}`);
+  };
+
+  const handleViewMaintenance = (vehicleId: string) => {
+    router.push(`/vehicles/maintenance/${vehicleId}`);
   };
 
   const handleScheduleService = () => {
     if (vehicles.length > 0) {
       // Navigate to vehicles tab first, then handle service scheduling
-      router.push("../vehicles");
+      router.push(`/vehicles/maintenance/task/new?vehicleId=${vehicles[0].id}`);
     } else {
       alert("Please add a vehicle first before scheduling maintenance.");
       router.push("../vehicles");
@@ -143,11 +171,31 @@ const HomeScreen = () => {
     const date = new Date(task.dueDate);
     const now = new Date();
     const diffTime = date.getTime() - now.getTime();
-    const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffMonths <= 0) return "Overdue";
-    if (diffMonths === 1) return "Due in 1 month";
-    return `Due in ${diffMonths} months`;
+    if (diffDays <= 0) return "Overdue";
+    if (diffDays === 1) return "Due tomorrow";
+    if (diffDays < 7) return `Due in ${diffDays} days`;
+    if (diffDays < 31) return `Due in ${Math.ceil(diffDays / 7)} weeks`;
+    return `Due on ${date.toLocaleDateString()}`;
+  };
+
+  const getTaskPriorityColor = (task: MaintenanceTask) => {
+    if (!task.dueDate && !task.dueMileage)
+      return isDark ? "#9ca3af" : "#6b7280";
+
+    if (task.dueDate) {
+      const date = new Date(task.dueDate);
+      const now = new Date();
+      const diffTime = date.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) return "#ef4444";
+      if (diffDays < 7) return "#f59e0b";
+    }
+
+    // Default color for normal priority
+    return "#10b981";
   };
 
   if (loading) {
@@ -190,6 +238,14 @@ const HomeScreen = () => {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[isDark ? "#60a5fa" : "#3b82f6"]}
+            tintColor={isDark ? "#60a5fa" : "#3b82f6"}
+          />
+        }
       >
         <Animated.View
           style={{
@@ -213,7 +269,7 @@ const HomeScreen = () => {
                     isDark ? "text-gray-400" : "text-gray-600"
                   } mt-1`}
                 >
-                  Here's an overview of your vehicle.
+                  Welcome to your vehicle dashboard
                 </Text>
               </View>
               <Pressable
@@ -235,117 +291,196 @@ const HomeScreen = () => {
 
           {/* Vehicle Status Card */}
           {vehicles.length > 0 ? (
-            <Animated.View
-              style={{
-                opacity: vehicleCardAnim,
-                transform: [{ scale: vehicleCardAnim }],
-              }}
-              className="px-6 mb-8"
-            >
-              <Text
-                className={`text-2xl font-bold mb-4 ${
-                  isDark ? "text-white" : "text-black"
-                }`}
-              >
-                Vehicle Status
-              </Text>
-
-              <Pressable
-                className={`rounded-3xl p-6 shadow-lg ${
-                  isDark
-                    ? "bg-gray-800 border border-gray-700"
-                    : "bg-white border border-gray-100"
-                }`}
-                onPress={() => handleViewVehicle(vehicles[0].id)}
-                style={{
-                  shadowColor: isDark ? "#000000" : "#000000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isDark ? 0.3 : 0.1,
-                  shadowRadius: 12,
-                  elevation: 5,
-                }}
-              >
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text
-                      className={`text-xl font-bold mb-2 ${
-                        isDark ? "text-white" : "text-black"
-                      }`}
-                    >
-                      {vehicles[0].year} {vehicles[0].make} {vehicles[0].model}
-                    </Text>
-
-                    <View className="space-y-2">
-                      <View className="flex-row items-center">
-                        <Ionicons
-                          name="battery-charging-outline"
-                          size={16}
-                          color={isDark ? "#60a5fa" : "#3b82f6"}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text
-                          className={`${
-                            isDark ? "text-gray-300" : "text-gray-600"
-                          }`}
-                        >
-                          Engine Health: Good
-                        </Text>
-                      </View>
-
-                      <View className="flex-row items-center">
-                        <Ionicons
-                          name="speedometer-outline"
-                          size={16}
-                          color={isDark ? "#60a5fa" : "#3b82f6"}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text
-                          className={`${
-                            isDark ? "text-gray-300" : "text-gray-600"
-                          }`}
-                        >
-                          Mileage:{" "}
-                          {vehicles[0].mileage
-                            .toString()
-                            .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
-                          miles
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Vehicle Image Section */}
-                  <View
-                    className={`w-24 h-24 rounded-2xl overflow-hidden justify-center items-center ${
-                      isDark ? "bg-gray-700" : "bg-gray-100"
-                    }`}
+            <View className="px-6 mb-8">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text
+                  className={`text-2xl font-bold ${
+                    isDark ? "text-white" : "text-black"
+                  }`}
+                >
+                  My Vehicles
+                </Text>
+                <Pressable onPress={() => router.push("../vehicles")}>
+                  <Text
+                    className={`${isDark ? "text-blue-400" : "text-blue-600"}`}
                   >
-                    {vehicles[0].imageUrl ? (
-                      <>
-                        {imageLoading && (
-                          <View className="absolute inset-0 flex items-center justify-center z-10">
-                            <ActivityIndicator
-                              size="small"
+                    View All
+                  </Text>
+                </Pressable>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 20 }}
+              >
+                {vehicles.map((vehicle, index) => (
+                  <Animated.View
+                    key={vehicle.id}
+                    style={{
+                      opacity: vehicleCardAnim,
+                      transform: [{ scale: vehicleCardAnim }],
+                      marginLeft: index === 0 ? 0 : 12,
+                      marginRight: index === vehicles.length - 1 ? 0 : 0,
+                    }}
+                  >
+                    <Pressable
+                      className={`rounded-3xl p-6 shadow-lg ${
+                        isDark
+                          ? "bg-gray-800 border border-gray-700"
+                          : "bg-white border border-gray-100"
+                      }`}
+                      onPress={() => handleViewVehicle(vehicle.id)}
+                      style={{
+                        shadowColor: isDark ? "#000000" : "#000000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: isDark ? 0.3 : 0.1,
+                        shadowRadius: 12,
+                        elevation: 5,
+                        width: width * 0.8,
+                      }}
+                    >
+                      <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-1">
+                          <Text
+                            className={`text-xl font-bold mb-1 ${
+                              isDark ? "text-white" : "text-black"
+                            }`}
+                            numberOfLines={1}
+                          >
+                            {vehicle.year} {vehicle.make} {vehicle.model}
+                          </Text>
+                          {vehicle.licensePlate && (
+                            <View className="bg-blue-100 self-start rounded-md px-2 py-1">
+                              <Text className="text-blue-800 text-xs font-medium">
+                                {vehicle.licensePlate}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Vehicle Image Section */}
+                        <View
+                          className={`w-16 h-16 rounded-2xl overflow-hidden justify-center items-center ${
+                            isDark ? "bg-gray-700" : "bg-gray-100"
+                          }`}
+                        >
+                          {vehicle.imageUrl ? (
+                            <>
+                              {imageLoading && (
+                                <View className="absolute inset-0 flex items-center justify-center z-10">
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={isDark ? "#60a5fa" : "#3b82f6"}
+                                  />
+                                </View>
+                              )}
+                              <Image
+                                source={{ uri: vehicle.imageUrl }}
+                                className="w-full h-full"
+                                resizeMode="cover"
+                                onLoadStart={() => setImageLoading(true)}
+                                onLoad={() => setImageLoading(false)}
+                                onError={() => setImageLoading(false)}
+                              />
+                            </>
+                          ) : (
+                            <Text className="text-3xl">🚗</Text>
+                          )}
+                        </View>
+                      </View>
+
+                      <View className="space-y-3 mt-2">
+                        <View className="flex-row items-center">
+                          <Ionicons
+                            name="speedometer-outline"
+                            size={16}
+                            color={isDark ? "#60a5fa" : "#3b82f6"}
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text
+                            className={`${
+                              isDark ? "text-gray-300" : "text-gray-600"
+                            }`}
+                          >
+                            Mileage:{" "}
+                            {vehicle.mileage
+                              .toString()
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
+                            miles
+                          </Text>
+                        </View>
+
+                        {vehicle.engineType && (
+                          <View className="flex-row items-center">
+                            <Ionicons
+                              name="car-sport-outline"
+                              size={16}
                               color={isDark ? "#60a5fa" : "#3b82f6"}
+                              style={{ marginRight: 8 }}
                             />
+                            <Text
+                              className={`${
+                                isDark ? "text-gray-300" : "text-gray-600"
+                              }`}
+                            >
+                              Engine: {vehicle.engineType}
+                            </Text>
                           </View>
                         )}
-                        <Image
-                          source={{ uri: vehicles[0].imageUrl }}
-                          className="w-full h-full"
-                          resizeMode="cover"
-                          onLoadStart={() => setImageLoading(true)}
-                          onLoad={() => setImageLoading(false)}
-                          onError={() => setImageLoading(false)}
-                        />
-                      </>
-                    ) : (
-                      <Text className="text-4xl">🚗</Text>
-                    )}
-                  </View>
-                </View>
-              </Pressable>
-            </Animated.View>
+
+                        {vehicle.fuelType && (
+                          <View className="flex-row items-center">
+                            <MaterialCommunityIcons
+                              name="gas-station-outline"
+                              size={16}
+                              color={isDark ? "#60a5fa" : "#3b82f6"}
+                              style={{ marginRight: 8 }}
+                            />
+                            <Text
+                              className={`${
+                                isDark ? "text-gray-300" : "text-gray-600"
+                              }`}
+                            >
+                              Fuel: {vehicle.fuelType}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View className="mt-4 flex-row">
+                        <Pressable
+                          className={`flex-1 rounded-xl py-2 mr-2 ${
+                            isDark ? "bg-blue-600" : "bg-blue-500"
+                          }`}
+                          onPress={() => handleViewMaintenance(vehicle.id)}
+                        >
+                          <Text className="text-white text-center font-medium">
+                            Maintenance
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          className={`flex-1 rounded-xl py-2 ${
+                            isDark
+                              ? "bg-gray-700 border border-gray-600"
+                              : "bg-gray-200"
+                          }`}
+                          onPress={() => handleViewVehicle(vehicle.id)}
+                        >
+                          <Text
+                            className={`text-center font-medium ${
+                              isDark ? "text-white" : "text-gray-800"
+                            }`}
+                          >
+                            Details
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                ))}
+              </ScrollView>
+            </View>
           ) : (
             // No Vehicle State
             <View className="px-6 mb-8">
@@ -429,7 +564,7 @@ const HomeScreen = () => {
               </View>
             ) : (
               <View className="space-y-4">
-                {upcomingServices.slice(0, 2).map((service, index) => (
+                {upcomingServices.map((service) => (
                   <Pressable
                     key={service.id}
                     className={`rounded-2xl p-5 shadow-sm ${
@@ -437,18 +572,23 @@ const HomeScreen = () => {
                         ? "bg-gray-800 border border-gray-700"
                         : "bg-white border border-gray-100"
                     }`}
-                    onPress={() => router.push("../dashboard/vehicles")}
+                    onPress={() =>
+                      router.push(`/vehicles/maintenance/${service.vehicleId}`)
+                    }
                   >
                     <View className="flex-row items-center">
                       <View
-                        className={`w-12 h-12 rounded-xl justify-center items-center mr-4 ${
-                          isDark ? "bg-gray-700" : "bg-gray-100"
-                        }`}
+                        className={`w-12 h-12 rounded-xl justify-center items-center mr-4`}
+                        style={{
+                          backgroundColor:
+                            getTaskPriorityColor(service) +
+                            (isDark ? "30" : "15"),
+                        }}
                       >
                         <Ionicons
-                          name={index === 0 ? "car-outline" : "build-outline"}
+                          name="build-outline"
                           size={24}
-                          color={isDark ? "#ffffff" : "#000000"}
+                          color={getTaskPriorityColor(service)}
                         />
                       </View>
 
@@ -457,6 +597,7 @@ const HomeScreen = () => {
                           className={`text-lg font-bold ${
                             isDark ? "text-white" : "text-black"
                           }`}
+                          numberOfLines={1}
                         >
                           {service.title}
                         </Text>
@@ -465,8 +606,25 @@ const HomeScreen = () => {
                             isDark ? "text-gray-400" : "text-gray-600"
                           }`}
                         >
-                          {formatDueDate(service)}
+                          {service.vehicleName}
                         </Text>
+                        <View className="flex-row items-center mt-1">
+                          <View
+                            className="h-2 w-2 rounded-full mr-2"
+                            style={{
+                              backgroundColor: getTaskPriorityColor(service),
+                            }}
+                          />
+                          <Text
+                            className={`text-sm ${
+                              isDark ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
+                            {formatDueDate(service)}
+                            {service.dueMileage &&
+                              ` • ${service.dueMileage.toLocaleString()} miles`}
+                          </Text>
+                        </View>
                       </View>
 
                       <Ionicons
@@ -506,7 +664,7 @@ const HomeScreen = () => {
                 }}
               >
                 <Ionicons name="calendar-outline" size={24} color="#ffffff" />
-                <Text className="text-white font-bold text-lg mt-2">
+                <Text className="text-white font-bold text-lg mt-2 text-center">
                   Schedule Service
                 </Text>
               </Pressable>
@@ -525,7 +683,7 @@ const HomeScreen = () => {
                   color={isDark ? "#ffffff" : "#000000"}
                 />
                 <Text
-                  className={`font-bold text-lg mt-2 ${
+                  className={`font-bold text-lg mt-2 text-center ${
                     isDark ? "text-white" : "text-black"
                   }`}
                 >

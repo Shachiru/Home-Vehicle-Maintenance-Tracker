@@ -6,55 +6,67 @@ import {
   deleteVehicle,
 } from "@/services/vehicleService";
 import { Vehicle } from "@/types/vehicle";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { onSnapshot } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
-  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  SafeAreaView,
+  StatusBar,
+  RefreshControl,
 } from "react-native";
 
 const VehicleScreen = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
   const { user, loading, isAuthenticated } = useAuth();
+
+  const loadVehicles = async () => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      showLoader();
+      const vehiclesColRef = await getUserVehiclesColRef();
+
+      return onSnapshot(
+        vehiclesColRef,
+        (snapshot) => {
+          const vehicleData = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Vehicle[];
+          setVehicles(vehicleData);
+          hideLoader();
+          setRefreshing(false);
+        },
+        (error) => {
+          console.error("Firestore error:", error);
+          hideLoader();
+          setRefreshing(false);
+          Alert.alert("Error", "Failed to load vehicles");
+        }
+      );
+    } catch (error) {
+      console.error("Setup error:", error);
+      hideLoader();
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       let unsubscribe: (() => void) | undefined;
 
       const setupListener = async () => {
-        try {
-          showLoader();
-          const vehiclesColRef = await getUserVehiclesColRef();
-
-          unsubscribe = onSnapshot(
-            vehiclesColRef,
-            (snapshot) => {
-              const vehicleData = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              })) as Vehicle[];
-              setVehicles(vehicleData);
-              hideLoader();
-            },
-            (error) => {
-              console.error("Firestore error:", error);
-              hideLoader();
-              Alert.alert("Error", "Failed to load vehicles");
-            }
-          );
-        } catch (error) {
-          console.error("Setup error:", error);
-          hideLoader();
-        }
+        unsubscribe = await loadVehicles();
       };
 
       setupListener();
@@ -66,6 +78,11 @@ const VehicleScreen = () => {
       };
     }
   }, [user, loading, isAuthenticated]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadVehicles();
+  };
 
   const handleDelete = (vehicleId: string) => {
     Alert.alert(
@@ -93,8 +110,7 @@ const VehicleScreen = () => {
   };
 
   const navigateToMaintenance = (vehicleId: string) => {
-    // Fix: Use the correct path format for Expo Router
-    router.push(`../vehicles/maintenance/${vehicleId}`);
+    router.push(`/vehicles/maintenance/${vehicleId}`);
   };
 
   const formatMileage = (mileage: number) => {
@@ -118,107 +134,146 @@ const VehicleScreen = () => {
   }
 
   return (
-    <View className="flex-1 w-full bg-white relative">
-      <Text className="text-3xl text-center text-blue-900 font-extrabold mb-6 mt-10 tracking-tight">
-        My Vehicles
-      </Text>
+    <SafeAreaView className="flex-1 bg-gray-100">
+      <StatusBar barStyle="dark-content" backgroundColor="#F3F4F6" />
 
-      <Pressable
-        className="absolute bottom-10 right-6 bg-blue-600 rounded-full p-4 shadow-2xl z-40"
-        onPress={() => router.push("../vehicles/new")}
-        style={{ elevation: 8 }}
-      >
-        <MaterialIcons name="add" size={30} color="#fff" />
-      </Pressable>
+      {/* Header */}
+      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mr-3 p-1"
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900">My Vehicles</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.push("../vehicles/new")}
+          className="w-10 h-10 justify-center items-center"
+        >
+          <MaterialIcons name="add" size={28} color="#000" />
+        </TouchableOpacity>
+      </View>
 
+      {/* Vehicle List */}
       <ScrollView
-        className="flex-1 w-full px-5 pt-4 pb-28"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        className="flex-1 px-4 py-4"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#3B82F6"]}
+            tintColor="#3B82F6"
+          />
+        }
       >
         {vehicles.length === 0 && (
           <View className="py-24 items-center justify-center">
-            <Text className="text-gray-500 text-xl font-medium">
+            <MaterialIcons name="directions-car" size={64} color="#CBD5E1" />
+            <Text className="text-gray-500 text-base font-medium mt-4">
               No vehicles found. Add your first vehicle!
             </Text>
           </View>
         )}
+
         {vehicles.map((vehicle) => (
           <View
             key={vehicle.id}
-            className="mb-5 rounded-2xl bg-white shadow-lg overflow-hidden border border-gray-200"
+            className="mb-5 rounded-xl bg-white shadow-md overflow-hidden"
           >
-            {vehicle.imageUrl ? (
-              <Image
-                source={{ uri: vehicle.imageUrl }}
-                className="w-full h-48"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="w-full h-24 bg-gray-200 items-center justify-center">
-                <MaterialIcons name="directions-car" size={48} color="#666" />
+            <View className="flex-row">
+              {/* Vehicle Image */}
+              <View className="w-28 h-28 bg-gray-100 justify-center items-center">
+                {vehicle.imageUrl ? (
+                  <Image
+                    source={{ uri: vehicle.imageUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="directions-car"
+                    size={44}
+                    color="#9CA3AF"
+                  />
+                )}
               </View>
-            )}
 
-            <View className="p-6">
-              <Text className="text-xl font-semibold text-blue-900 mb-1 tracking-wide">
-                {vehicle.year} {vehicle.make} {vehicle.model}
-              </Text>
-
-              <View className="flex-row flex-wrap my-2">
-                <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2">
-                  <Text className="text-sm text-gray-800">
-                    Mileage: {formatMileage(vehicle.mileage)} mi
-                  </Text>
+              {/* Vehicle Details */}
+              <View className="flex-1 p-4">
+                <View className="flex-row justify-between items-start">
+                  <View>
+                    <Text className="text-gray-600 text-sm">
+                      {vehicle.year}
+                    </Text>
+                    <Text className="text-xl font-bold text-gray-900">
+                      {vehicle.make} {vehicle.model}
+                    </Text>
+                  </View>
                 </View>
 
-                {vehicle.fuelType && (
-                  <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2">
-                    <Text className="text-sm text-gray-800">
-                      {vehicle.fuelType}
-                    </Text>
-                  </View>
-                )}
-
                 {vehicle.licensePlate && (
-                  <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2">
-                    <Text className="text-sm text-gray-800">
-                      Plate: {vehicle.licensePlate}
-                    </Text>
-                  </View>
+                  <Text className="text-gray-500 mt-1">
+                    License Plate: {vehicle.licensePlate}
+                  </Text>
                 )}
-              </View>
 
-              <View className="flex-row space-x-3 mt-4">
-                <TouchableOpacity
-                  className="flex-1 bg-green-600 px-3 py-2.5 rounded-lg shadow-md"
-                  onPress={() => navigateToMaintenance(vehicle.id)}
-                >
-                  <Text className="text-white font-medium text-base text-center">
-                    Maintenance
+                <View className="flex-row flex-wrap mt-1">
+                  <Text className="text-gray-500">
+                    {formatMileage(vehicle.mileage)} miles
                   </Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  className="bg-blue-500 px-3 py-2.5 rounded-lg shadow-md"
-                  onPress={() => router.push(`../vehicles/${vehicle.id}`)}
-                >
-                  <Text className="text-white font-medium text-base">Edit</Text>
-                </TouchableOpacity>
+                  {vehicle.fuelType && (
+                    <Text className="text-gray-500 ml-2">
+                      • {vehicle.fuelType}
+                    </Text>
+                  )}
 
-                <TouchableOpacity
-                  className="bg-red-500 px-3 py-2.5 rounded-lg shadow-md"
-                  onPress={() => vehicle.id && handleDelete(vehicle.id)}
-                >
-                  <Text className="text-white font-medium text-base">
-                    Delete
-                  </Text>
-                </TouchableOpacity>
+                  {vehicle.engineType && (
+                    <Text className="text-gray-500 ml-2">
+                      • {vehicle.engineType}
+                    </Text>
+                  )}
+                </View>
               </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row items-center border-t border-gray-100">
+              <TouchableOpacity
+                className="flex-1 py-3 px-4 flex-row items-center justify-center bg-gray-900"
+                onPress={() => navigateToMaintenance(vehicle.id)}
+              >
+                <Text className="text-white font-medium mr-1">
+                  Vehicle Maintenance
+                </Text>
+                <MaterialIcons name="arrow-forward" size={16} color="white" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="py-3 px-4 border-l border-gray-100"
+                onPress={() => router.push(`../vehicles/${vehicle.id}`)}
+              >
+                <MaterialIcons name="edit" size={20} color="#4B5563" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="py-3 px-4 border-l border-gray-100"
+                onPress={() => vehicle.id && handleDelete(vehicle.id)}
+              >
+                <MaterialIcons name="delete" size={20} color="#EF4444" />
+              </TouchableOpacity>
             </View>
           </View>
         ))}
+
+        {/* Space at bottom to ensure last card isn't covered by bottom tab */}
+        <View className="h-20" />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

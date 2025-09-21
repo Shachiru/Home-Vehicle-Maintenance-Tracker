@@ -208,7 +208,9 @@ const MaintenanceScreen = () => {
 
       <Pressable
         className="absolute bottom-10 right-6 bg-blue-600 rounded-full p-4 shadow-2xl z-40"
-        onPress={() => router.push(`../task/new?vehicleId=${vehicleId}`)}
+        onPress={() =>
+          router.push(`/vehicles/maintenance/task/new?vehicleId=${vehicleId}`)
+        }
         style={{ elevation: 8 }}
       >
         <MaterialIcons name="add" size={30} color="#fff" />
@@ -315,7 +317,9 @@ const MaintenanceScreen = () => {
               <TouchableOpacity
                 className="flex-1 bg-blue-500 px-3 py-2 rounded-lg shadow-sm"
                 onPress={() =>
-                  router.push(`../task/${task.id}?vehicleId=${vehicleId}`)
+                  router.push(
+                    `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}`
+                  )
                 }
               >
                 <Text className="text-white font-medium text-center">
@@ -328,7 +332,7 @@ const MaintenanceScreen = () => {
                   className="flex-1 bg-green-500 px-3 py-2 rounded-lg shadow-sm"
                   onPress={() =>
                     router.push(
-                      `../task/${task.id}?vehicleId=${vehicleId}&complete=true`
+                      `/vehicles/maintenance/task/${task.id}?vehicleId=${vehicleId}&complete=true`
                     )
                   }
                 >
