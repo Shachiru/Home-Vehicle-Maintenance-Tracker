@@ -7,7 +7,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 const DashboardLayout = () => {
   const { user, loading } = useAuth();
-  const { isDark } = useTheme();
+  const { isDark, isLoading: themeLoading } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -34,16 +34,43 @@ const DashboardLayout = () => {
     );
   }
 
+  // Show loading overlay during theme transitions to prevent navigation errors
+  if (themeLoading) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: isDark ? "#111827" : "#ffffff",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator
+          color={isDark ? "#60a5fa" : "#3b82f6"}
+          size="large"
+        />
+        <Text
+          style={{
+            marginTop: 16,
+            color: isDark ? "#d1d5db" : "#6b7280",
+          }}
+        >
+          Updating theme...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className={`flex-1 ${isDark ? "bg-gray-900" : "bg-white"}`}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: isDark ? "#60a5fa" : "#3b82f6", // Blue color for both themes but slightly different shades
-          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280", // Gray color, lighter for dark mode
+          tabBarActiveTintColor: isDark ? "#60a5fa" : "#3b82f6",
+          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
           tabBarStyle: {
-            backgroundColor: isDark ? "#1f2937" : "#ffffff", // Dark gray for dark mode, white for light mode
-            borderTopColor: isDark ? "#374151" : "#e5e7eb", // Border color
+            backgroundColor: isDark ? "#1f2937" : "#ffffff",
+            borderTopColor: isDark ? "#374151" : "#e5e7eb",
             borderTopWidth: 1,
             elevation: 0,
             shadowOpacity: 0.1,

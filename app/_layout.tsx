@@ -16,13 +16,13 @@ const LayoutWithLoader = () => {
 };
 
 const RootLayout = () => (
-  <LoaderProvider>
-    <AuthProvider>
-      <ThemeProvider>
+  <ThemeProvider>
+    <LoaderProvider>
+      <AuthProvider>
         <LayoutWithLoader />
-      </ThemeProvider>
-    </AuthProvider>
-  </LoaderProvider>
+      </AuthProvider>
+    </LoaderProvider>
+  </ThemeProvider>
 );
 
 export default RootLayout;
