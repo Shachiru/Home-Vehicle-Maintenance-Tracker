@@ -49,8 +49,6 @@ Home Vehicle Maintenance Tracker is a mobile application designed to help vehicl
 
 ## 📱 Screenshots
 
-*(Add screenshots of your application here)*
-
 <div align="center">
   <img src="assets/images/login-screen.jpg" alt="Login Screen" width="30%">
   <img src="assets/images/home-screen.jpg" alt="Home Screen" width="30%">
