@@ -59,6 +59,10 @@ Home Vehicle Maintenance Tracker is a mobile application designed to help vehicl
 
 ## 📥 Installation
 
+### Direct Download
+Download the APK directly to your Android device:
+- [Download APK](https://expo.dev/artifacts/eas/nXNbzhP15fZvyQuCQwqs3.apk)
+
 ### Prerequisites
 - Node.js (v14.x or higher)
 - npm or Yarn
@@ -117,7 +121,7 @@ Home Vehicle Maintenance Tracker is a mobile application designed to help vehicl
 ### Daily Use
 1. **Log Maintenance**: Record service tasks with date, mileage, cost, and notes
 2. **View History**: See all past maintenance for each vehicle
-3. **Check Reminders**: Review upcoming or overdue maintenance items
+3. **Check Reminders**: Review upcoming or overdue maintenance tasks
 4. **Track Expenses**: Monitor your spending on vehicle maintenance
 
 ### Advanced Features
